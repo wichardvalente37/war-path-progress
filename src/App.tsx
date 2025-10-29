@@ -9,6 +9,7 @@ import Missions from "./pages/Missions";
 import Goals from "./pages/Goals";
 import Achievements from "./pages/Achievements";
 import Profile from "./pages/Profile";
+import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,10 +23,11 @@ const App = () => (
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/missions" element={<Missions />} />
-            <Route path="/goals" element={<Goals />} />
-            <Route path="/achievements" element={<Achievements />} />
-            <Route path="/profile" element={<Profile />} />
+          <Route path="/missions" element={<Missions />} />
+          <Route path="/goals" element={<Goals />} />
+          <Route path="/achievements" element={<Achievements />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/analytics" element={<Analytics />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

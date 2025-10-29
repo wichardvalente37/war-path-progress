@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Target, Trophy, User, Flame, Swords } from "lucide-react";
+import { Home, Target, Trophy, User, Flame, Swords, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
@@ -9,6 +9,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { icon: Home, label: "HQ", path: "/" },
     { icon: Swords, label: "Missions", path: "/missions" },
     { icon: Target, label: "Goals", path: "/goals" },
+    { icon: BarChart3, label: "Analytics", path: "/analytics" },
     { icon: Trophy, label: "Achievements", path: "/achievements" },
     { icon: User, label: "Profile", path: "/profile" },
   ];

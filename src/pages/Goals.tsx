@@ -2,10 +2,18 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Target, Crown, TrendingUp } from "lucide-react";
+import { Plus, Target, Crown, TrendingUp, Edit, Trash2, Eye } from "lucide-react";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Goals = () => {
-  const goals = [
+  const { toast } = useToast();
+  const [goals, setGoals] = useState([
     {
       id: 1,
       title: "Master Discipline - 90 Day Challenge",
@@ -36,7 +44,20 @@ const Goals = () => {
       reward: 800,
       status: "active",
     },
-  ];
+  ]);
+
+  const [isNewGoalOpen, setIsNewGoalOpen] = useState(false);
+  const [isEditGoalOpen, setIsEditGoalOpen] = useState(false);
+  const [isDetailsGoalOpen, setIsDetailsGoalOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    type: "medium",
+    progress: 0,
+    target: 10,
+    reward: 500
+  });
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -56,6 +77,63 @@ const Goals = () => {
     }
   };
 
+  const handleCreateGoal = () => {
+    const newGoal = {
+      id: goals.length + 1,
+      ...formData,
+      status: "active"
+    };
+    setGoals([...goals, newGoal]);
+    setIsNewGoalOpen(false);
+    setFormData({ title: "", description: "", type: "medium", progress: 0, target: 10, reward: 500 });
+    toast({
+      title: "Goal Created! 🎯",
+      description: "New goal added to your list!",
+      className: "bg-primary/20 border-primary",
+    });
+  };
+
+  const handleEditGoal = () => {
+    setGoals(goals.map(g => 
+      g.id === selectedGoal.id ? { ...g, ...formData } : g
+    ));
+    setIsEditGoalOpen(false);
+    setSelectedGoal(null);
+    setFormData({ title: "", description: "", type: "medium", progress: 0, target: 10, reward: 500 });
+    toast({
+      title: "Goal Updated! ✏️",
+      description: "Goal successfully updated!",
+      className: "bg-cyber/20 border-cyber",
+    });
+  };
+
+  const handleDeleteGoal = (goalId: number) => {
+    setGoals(goals.filter(g => g.id !== goalId));
+    toast({
+      title: "Goal Deleted! 🗑️",
+      description: "Goal removed from your list.",
+      variant: "destructive",
+    });
+  };
+
+  const openEditDialog = (goal: any) => {
+    setSelectedGoal(goal);
+    setFormData({
+      title: goal.title,
+      description: goal.description,
+      type: goal.type,
+      progress: goal.progress,
+      target: goal.target,
+      reward: goal.reward
+    });
+    setIsEditGoalOpen(true);
+  };
+
+  const openDetailsDialog = (goal: any) => {
+    setSelectedGoal(goal);
+    setIsDetailsGoalOpen(true);
+  };
+
   return (
     <div className="space-y-6 animate-slide-in">
       <div className="flex items-center justify-between">
@@ -68,7 +146,7 @@ const Goals = () => {
             Long-term objectives and boss battles
           </p>
         </div>
-        <Button className="bg-gradient-elite border-0 shadow-glow-gold text-black font-bold">
+        <Button className="bg-gradient-elite border-0 shadow-glow-gold text-black font-bold" onClick={() => setIsNewGoalOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           New Goal
         </Button>
@@ -128,6 +206,21 @@ const Goals = () => {
                   </div>
                 </div>
               )}
+
+              <div className="flex gap-2 pt-4 border-t border-border">
+                <Button size="sm" variant="ghost" onClick={() => openDetailsDialog(goal)}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Details
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => openEditDialog(goal)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleDeleteGoal(goal.id)}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
             </div>
           </Card>
         ))}
@@ -155,6 +248,185 @@ const Goals = () => {
           </div>
         </div>
       </Card>
+
+      {/* New Goal Dialog */}
+      <Dialog open={isNewGoalOpen} onOpenChange={setIsNewGoalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Goal</DialogTitle>
+            <DialogDescription>Set a new long-term objective</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="goal-title">Title</Label>
+              <Input 
+                id="goal-title" 
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                placeholder="Goal title"
+              />
+            </div>
+            <div>
+              <Label htmlFor="goal-description">Description</Label>
+              <Textarea 
+                id="goal-description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                placeholder="Goal description"
+              />
+            </div>
+            <div>
+              <Label htmlFor="goal-type">Type</Label>
+              <Select value={formData.type} onValueChange={(val) => setFormData({...formData, type: val})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="boss">BOSS BATTLE</SelectItem>
+                  <SelectItem value="long">LONG TERM</SelectItem>
+                  <SelectItem value="medium">MEDIUM TERM</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="goal-target">Target</Label>
+                <Input 
+                  id="goal-target" 
+                  type="number"
+                  value={formData.target}
+                  onChange={(e) => setFormData({...formData, target: parseFloat(e.target.value)})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="goal-reward">XP Reward</Label>
+                <Input 
+                  id="goal-reward" 
+                  type="number"
+                  value={formData.reward}
+                  onChange={(e) => setFormData({...formData, reward: parseInt(e.target.value)})}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewGoalOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateGoal}>Create Goal</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Goal Dialog */}
+      <Dialog open={isEditGoalOpen} onOpenChange={setIsEditGoalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Goal</DialogTitle>
+            <DialogDescription>Update goal details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-goal-title">Title</Label>
+              <Input 
+                id="edit-goal-title" 
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-goal-description">Description</Label>
+              <Textarea 
+                id="edit-goal-description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-goal-type">Type</Label>
+              <Select value={formData.type} onValueChange={(val) => setFormData({...formData, type: val})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="boss">BOSS BATTLE</SelectItem>
+                  <SelectItem value="long">LONG TERM</SelectItem>
+                  <SelectItem value="medium">MEDIUM TERM</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="edit-goal-progress">Progress</Label>
+                <Input 
+                  id="edit-goal-progress" 
+                  type="number"
+                  value={formData.progress}
+                  onChange={(e) => setFormData({...formData, progress: parseFloat(e.target.value)})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-goal-target">Target</Label>
+                <Input 
+                  id="edit-goal-target" 
+                  type="number"
+                  value={formData.target}
+                  onChange={(e) => setFormData({...formData, target: parseFloat(e.target.value)})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-goal-reward">XP Reward</Label>
+                <Input 
+                  id="edit-goal-reward" 
+                  type="number"
+                  value={formData.reward}
+                  onChange={(e) => setFormData({...formData, reward: parseInt(e.target.value)})}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditGoalOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditGoal}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Goal Details Dialog */}
+      <Dialog open={isDetailsGoalOpen} onOpenChange={setIsDetailsGoalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedGoal?.title}</DialogTitle>
+            <DialogDescription>Goal Details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Description</Label>
+              <p className="text-sm text-muted-foreground">{selectedGoal?.description}</p>
+            </div>
+            <div>
+              <Label>Type</Label>
+              <Badge className={getTypeColor(selectedGoal?.type || "")} variant="outline">
+                {getTypeLabel(selectedGoal?.type || "")}
+              </Badge>
+            </div>
+            <div>
+              <Label>Progress</Label>
+              <div className="mt-2">
+                <Progress value={(selectedGoal?.progress / selectedGoal?.target) * 100} className="h-3" />
+                <p className="text-sm text-muted-foreground mt-1">
+                  {selectedGoal?.progress} / {selectedGoal?.target} ({Math.round((selectedGoal?.progress / selectedGoal?.target) * 100)}%)
+                </p>
+              </div>
+            </div>
+            <div>
+              <Label>XP Reward</Label>
+              <p className="text-lg font-bold text-gold mt-2">+{selectedGoal?.reward} XP</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsDetailsGoalOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

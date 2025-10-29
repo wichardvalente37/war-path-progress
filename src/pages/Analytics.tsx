@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, TrendingUp, Calendar, Filter, Target, Flame, Award, Zap } from "lucide-react";
 import { useState } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState("7days");
@@ -13,13 +14,13 @@ const Analytics = () => {
 
   // Mock data
   const weeklyData = [
-    { day: "Mon", completed: 8, total: 10 },
-    { day: "Tue", completed: 9, total: 10 },
-    { day: "Wed", completed: 7, total: 10 },
-    { day: "Thu", completed: 10, total: 10 },
-    { day: "Fri", completed: 8, total: 10 },
-    { day: "Sat", completed: 6, total: 10 },
-    { day: "Sun", completed: 9, total: 10 },
+    { day: "Mon", completed: 8, total: 10, rate: 80 },
+    { day: "Tue", completed: 9, total: 10, rate: 90 },
+    { day: "Wed", completed: 7, total: 10, rate: 70 },
+    { day: "Thu", completed: 10, total: 10, rate: 100 },
+    { day: "Fri", completed: 8, total: 10, rate: 80 },
+    { day: "Sat", completed: 6, total: 10, rate: 60 },
+    { day: "Sun", completed: 9, total: 10, rate: 90 },
   ];
 
   const categoryStats = [
@@ -164,6 +165,26 @@ const Analytics = () => {
               <Calendar className="w-5 h-5 text-primary" />
               Weekly Performance
             </h3>
+            <div className="h-[300px] mb-6">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: "hsl(var(--card))", 
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px"
+                    }} 
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="rate" stroke="hsl(var(--primary))" strokeWidth={2} name="Completion %" />
+                  <Line type="monotone" dataKey="completed" stroke="hsl(var(--success))" strokeWidth={2} name="Completed" />
+                  <Line type="monotone" dataKey="total" stroke="hsl(var(--cyber))" strokeWidth={2} name="Total" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
             <div className="space-y-4">
               {weeklyData.map((day) => (
                 <div key={day.day}>

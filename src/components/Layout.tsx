@@ -1,17 +1,19 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, Target, Trophy, User, Flame, Swords, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { t } from "@/lib/i18n";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   const navItems = [
-    { icon: Home, label: "HQ", path: "/" },
-    { icon: Swords, label: "Missions", path: "/missions" },
-    { icon: Target, label: "Goals", path: "/goals" },
-    { icon: BarChart3, label: "Analytics", path: "/analytics" },
-    { icon: Trophy, label: "Achievements", path: "/achievements" },
-    { icon: User, label: "Profile", path: "/profile" },
+    { icon: Home, label: t("dashboard"), path: "/" },
+    { icon: Swords, label: t("missions"), path: "/missions" },
+    { icon: Target, label: t("goals"), path: "/goals" },
+    { icon: BarChart3, label: t("analytics"), path: "/analytics" },
+    { icon: Trophy, label: t("achievements"), path: "/achievements" },
+    { icon: User, label: t("profile"), path: "/profile" },
   ];
 
   return (
@@ -29,6 +31,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <p className="text-xs text-muted-foreground">War Mode Active</p>
               </div>
             </div>
+            <LanguageSwitcher />
           </div>
         </div>
       </header>

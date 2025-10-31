@@ -17,6 +17,25 @@ export const translations = {
     close: "Close",
     details: "Details",
     
+    // Auth
+    login: "Login",
+    signup: "Sign Up",
+    logout: "Logout",
+    email: "Email",
+    password: "Password",
+    loginDescription: "Enter your credentials to access your account",
+    signupDescription: "Create a new account to get started",
+    noAccount: "Don't have an account? Sign up",
+    haveAccount: "Already have an account? Login",
+    loginSuccess: "Logged in successfully",
+    signupSuccess: "Account created successfully",
+    
+    // Common status
+    success: "Success",
+    error: "Error",
+    loading: "Loading...",
+    current: "Current",
+    
     // Missions
     newMission: "New Mission",
     missionCreated: "Mission Created!",
@@ -59,6 +78,25 @@ export const translations = {
     save: "Guardar",
     close: "Fechar",
     details: "Detalhes",
+    
+    // Auth
+    login: "Entrar",
+    signup: "Registar",
+    logout: "Sair",
+    email: "E-mail",
+    password: "Palavra-passe",
+    loginDescription: "Insira as suas credenciais para aceder",
+    signupDescription: "Crie uma nova conta para começar",
+    noAccount: "Não tem conta? Registe-se",
+    haveAccount: "Já tem conta? Entre",
+    loginSuccess: "Login realizado com sucesso",
+    signupSuccess: "Conta criada com sucesso",
+    
+    // Common status
+    success: "Sucesso",
+    error: "Erro",
+    loading: "A carregar...",
+    current: "Atual",
     
     // Missions
     newMission: "Nova Missão",

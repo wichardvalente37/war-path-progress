@@ -1,11 +1,34 @@
-import { Link, useLocation } from "react-router-dom";
-import { Home, Target, Trophy, User, Flame, Swords, BarChart3 } from "lucide-react";
+import { useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Home, Target, Trophy, User, Flame, Swords, BarChart3, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { Button } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
+import { useAuth } from "@/hooks/useAuth";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, loading, signOut } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user && location.pathname !== "/auth") {
+      navigate("/auth");
+    }
+  }, [user, loading, location.pathname, navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">{t("loading")}</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const navItems = [
     { icon: Home, label: t("dashboard"), path: "/" },
@@ -31,7 +54,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <p className="text-xs text-muted-foreground">War Mode Active</p>
               </div>
             </div>
-            <LanguageSwitcher />
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher />
+              <Button variant="ghost" size="sm" onClick={signOut}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>

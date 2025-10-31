@@ -1,111 +1,172 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Swords, Clock, Zap, Edit, Trash2, Eye } from "lucide-react";
-import { useState } from "react";
+import { Plus, Swords, Clock, Zap, Edit, Trash2, Eye, CheckCircle2, XCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { t } from "@/lib/i18n";
+
+interface Mission {
+  id: string;
+  title: string;
+  description: string | null;
+  difficulty: string;
+  xp: number;
+  status: string;
+  created_at: string;
+}
 
 const Missions = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [missions, setMissions] = useState([
-    { id: 1, title: "Complete 100 Push-ups", description: "Physical challenge for strength building", difficulty: "EXTREME", xp: 100, status: "active" },
-    { id: 2, title: "Read for 1 hour", description: "Knowledge is power", difficulty: "NORMAL", xp: 30, status: "active" },
-    { id: 3, title: "Morning Meditation", description: "Start the day with clarity", difficulty: "EASY", xp: 20, status: "completed" },
-  ]);
-  
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isNewMissionOpen, setIsNewMissionOpen] = useState(false);
   const [isEditMissionOpen, setIsEditMissionOpen] = useState(false);
   const [isDetailsMissionOpen, setIsDetailsMissionOpen] = useState(false);
-  const [selectedMission, setSelectedMission] = useState<any>(null);
+  const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    difficulty: "NORMAL",
-    xp: 30
+    difficulty: "medium",
+    xp: 30,
   });
 
-  const handleComplete = (missionId: number) => {
-    const mission = missions.find(m => m.id === missionId);
-    setMissions(missions.map(m => 
-      m.id === missionId ? { ...m, status: "completed" } : m
-    ));
-    toast({
-      title: "Mission Completed! 🎯",
-      description: `+${mission?.xp} XP gained! Keep the streak going!`,
-      className: "bg-success/20 border-success",
-    });
+  useEffect(() => {
+    if (user) {
+      fetchMissions();
+    }
+  }, [user]);
+
+  const fetchMissions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("missions")
+        .select("*")
+        .eq("user_id", user?.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setMissions(data || []);
+    } catch (error: any) {
+      toast({
+        title: t("error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleFailed = (missionId: number) => {
-    setMissions(missions.map(m => 
-      m.id === missionId ? { ...m, status: "failed" } : m
-    ));
-    toast({
-      title: "Mission Failed ⚠️",
-      description: "No XP gained. Learn and come back stronger!",
-      variant: "destructive",
-    });
+  const handleCreateMission = async () => {
+    try {
+      const { error } = await supabase.from("missions").insert({
+        user_id: user?.id,
+        title: formData.title,
+        description: formData.description,
+        difficulty: formData.difficulty,
+        xp: formData.xp,
+        status: "pending",
+      });
+
+      if (error) throw error;
+
+      toast({ title: t("success"), description: t("missionCreated") });
+      setIsNewMissionOpen(false);
+      setFormData({ title: "", description: "", difficulty: "medium", xp: 30 });
+      fetchMissions();
+    } catch (error: any) {
+      toast({ title: t("error"), description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleCreateMission = () => {
-    const newMission = {
-      id: missions.length + 1,
-      ...formData,
-      status: "active"
-    };
-    setMissions([...missions, newMission]);
-    setIsNewMissionOpen(false);
-    setFormData({ title: "", description: "", difficulty: "NORMAL", xp: 30 });
-    toast({
-      title: "Mission Created! 🎯",
-      description: "New mission added to your list!",
-      className: "bg-primary/20 border-primary",
-    });
+  const handleEditMission = async () => {
+    if (!selectedMission) return;
+
+    try {
+      const { error } = await supabase
+        .from("missions")
+        .update({
+          title: formData.title,
+          description: formData.description,
+          difficulty: formData.difficulty,
+          xp: formData.xp,
+        })
+        .eq("id", selectedMission.id);
+
+      if (error) throw error;
+
+      toast({ title: t("success"), description: t("missionUpdated") });
+      setIsEditMissionOpen(false);
+      setSelectedMission(null);
+      fetchMissions();
+    } catch (error: any) {
+      toast({ title: t("error"), description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleEditMission = () => {
-    setMissions(missions.map(m => 
-      m.id === selectedMission.id ? { ...m, ...formData } : m
-    ));
-    setIsEditMissionOpen(false);
-    setSelectedMission(null);
-    setFormData({ title: "", description: "", difficulty: "NORMAL", xp: 30 });
-    toast({
-      title: "Mission Updated! ✏️",
-      description: "Mission successfully updated!",
-      className: "bg-cyber/20 border-cyber",
-    });
+  const handleDeleteMission = async (id: string) => {
+    try {
+      const { error } = await supabase.from("missions").delete().eq("id", id);
+
+      if (error) throw error;
+
+      toast({ title: t("success"), description: t("missionDeleted") });
+      fetchMissions();
+    } catch (error: any) {
+      toast({ title: t("error"), description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleDeleteMission = (missionId: number) => {
-    setMissions(missions.filter(m => m.id !== missionId));
-    toast({
-      title: "Mission Deleted! 🗑️",
-      description: "Mission removed from your list.",
-      variant: "destructive",
-    });
+  const handleStatusChange = async (id: string, status: string) => {
+    try {
+      const { error } = await supabase.from("missions").update({ status }).eq("id", id);
+
+      if (error) throw error;
+
+      toast({ title: t("success"), description: status === "completed" ? t("missionCompleted") : t("missionFailed") });
+      fetchMissions();
+    } catch (error: any) {
+      toast({ title: t("error"), description: error.message, variant: "destructive" });
+    }
   };
 
-  const openEditDialog = (mission: any) => {
+  const openEditDialog = (mission: Mission) => {
     setSelectedMission(mission);
     setFormData({
       title: mission.title,
-      description: mission.description,
+      description: mission.description || "",
       difficulty: mission.difficulty,
-      xp: mission.xp
+      xp: mission.xp,
     });
     setIsEditMissionOpen(true);
   };
 
-  const openDetailsDialog = (mission: any) => {
+  const openDetailsDialog = (mission: Mission) => {
     setSelectedMission(mission);
     setIsDetailsMissionOpen(true);
   };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case "easy": return "bg-success/20 text-success border-success/30";
+      case "medium": return "bg-cyber/20 text-cyber border-cyber/30";
+      case "hard": return "bg-war-orange/20 text-war-orange border-war-orange/30";
+      default: return "bg-muted text-foreground";
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">{t("loading")}</div>;
+  }
 
   return (
     <div className="space-y-6 animate-slide-in">
@@ -175,15 +236,17 @@ const Missions = () => {
                   <Button 
                     variant="default" 
                     className="flex-1 bg-gradient-success border-0"
-                    onClick={() => handleComplete(mission.id)}
+                    onClick={() => handleStatusChange(mission.id, "completed")}
                   >
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
                     Complete
                   </Button>
                   <Button 
                     variant="outline" 
                     className="flex-1 border-destructive text-destructive hover:bg-destructive/10"
-                    onClick={() => handleFailed(mission.id)}
+                    onClick={() => handleStatusChange(mission.id, "failed")}
                   >
+                    <XCircle className="w-4 h-4 mr-2" />
                     Failed
                   </Button>
                 </>

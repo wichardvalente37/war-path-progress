@@ -51,6 +51,7 @@ export type Database = {
       }
       goals: {
         Row: {
+          category: string
           created_at: string | null
           current: number
           description: string | null
@@ -61,6 +62,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          category?: string
           created_at?: string | null
           current?: number
           description?: string | null
@@ -71,6 +73,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          category?: string
           created_at?: string | null
           current?: number
           description?: string | null
@@ -95,7 +98,11 @@ export type Database = {
           created_at: string | null
           description: string | null
           difficulty: string
+          due_date: string
+          goal_id: string | null
           id: string
+          is_recurring: boolean | null
+          recurrence_pattern: string | null
           status: string
           title: string
           updated_at: string | null
@@ -106,7 +113,11 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty: string
+          due_date?: string
+          goal_id?: string | null
           id?: string
+          is_recurring?: boolean | null
+          recurrence_pattern?: string | null
           status?: string
           title: string
           updated_at?: string | null
@@ -117,7 +128,11 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty?: string
+          due_date?: string
+          goal_id?: string | null
           id?: string
+          is_recurring?: boolean | null
+          recurrence_pattern?: string | null
           status?: string
           title?: string
           updated_at?: string | null
@@ -125,6 +140,13 @@ export type Database = {
           xp?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "missions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "missions_user_id_fkey"
             columns: ["user_id"]

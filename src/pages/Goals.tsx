@@ -31,11 +31,13 @@ const Goals = () => {
   const [isEditGoalOpen, setIsEditGoalOpen] = useState(false);
   const [isDetailsGoalOpen, setIsDetailsGoalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     target: 100,
     current: 0,
+    category: "standard",
   });
 
   useEffect(() => {
@@ -73,13 +75,14 @@ const Goals = () => {
         description: formData.description,
         target: formData.target,
         current: formData.current,
+        category: formData.category,
       });
 
       if (error) throw error;
 
       toast({ title: t("success"), description: t("goalCreated") });
       setIsNewGoalOpen(false);
-      setFormData({ title: "", description: "", target: 100, current: 0 });
+      setFormData({ title: "", description: "", target: 100, current: 0, category: "standard" });
       fetchGoals();
     } catch (error: any) {
       toast({ title: t("error"), description: error.message, variant: "destructive" });
@@ -131,6 +134,7 @@ const Goals = () => {
       description: goal.description || "",
       target: goal.target,
       current: goal.current,
+      category: (goal as any).category || "standard",
     });
     setIsEditGoalOpen(true);
   };
@@ -162,8 +166,26 @@ const Goals = () => {
         </Button>
       </div>
 
+      {/* Category Filter */}
+      <Card className="p-4">
+        <Label>{t("category")}</Label>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("all")}</SelectItem>
+            <SelectItem value="standard">{t("standard")}</SelectItem>
+            <SelectItem value="boss_battle">{t("bossBattle")}</SelectItem>
+            <SelectItem value="epic">{t("epic")}</SelectItem>
+            <SelectItem value="daily">{t("daily")}</SelectItem>
+            <SelectItem value="weekly">{t("weekly")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </Card>
+
       <div className="space-y-4">
-        {goals.map((goal) => {
+        {goals.filter(g => categoryFilter === "all" || (g as any).category === categoryFilter).map((goal) => {
           const progress = goal.target > 0 ? (goal.current / goal.target) * 100 : 0;
           
           return (
@@ -262,8 +284,23 @@ const Goals = () => {
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="goal-target">{t("target")}</Label>
+            <div>
+              <Label htmlFor="goal-category">{t("category")}</Label>
+              <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                <SelectTrigger id="goal-category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">{t("standard")}</SelectItem>
+                  <SelectItem value="boss_battle">{t("bossBattle")}</SelectItem>
+                  <SelectItem value="epic">{t("epic")}</SelectItem>
+                  <SelectItem value="daily">{t("daily")}</SelectItem>
+                  <SelectItem value="weekly">{t("weekly")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="goal-target">{t("target")}</Label>
                 <Input 
                   id="goal-target" 
                   type="number"

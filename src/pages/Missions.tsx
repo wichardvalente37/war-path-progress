@@ -527,14 +527,14 @@ const Missions = () => {
             <div>
               <Label htmlFor="mission-goal">{t("selectGoal")}</Label>
               <Select
-                value={formData.goal_id}
-                onValueChange={(value) => setFormData({ ...formData, goal_id: value })}
+                value={formData.goal_id || "no-goal"}
+                onValueChange={(value) => setFormData({ ...formData, goal_id: value === "no-goal" ? "" : value })}
               >
                 <SelectTrigger id="mission-goal">
                   <SelectValue placeholder={t("noGoal")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{t("noGoal")}</SelectItem>
+                  <SelectItem value="no-goal">{t("noGoal")}</SelectItem>
                   {goals.map((goal) => (
                     <SelectItem key={goal.id} value={goal.id}>
                       {goal.title} ({goal.category})
@@ -698,14 +698,14 @@ const Missions = () => {
             <div>
               <Label htmlFor="edit-mission-goal">{t("selectGoal")}</Label>
               <Select
-                value={formData.goal_id}
-                onValueChange={(value) => setFormData({ ...formData, goal_id: value })}
+                value={formData.goal_id || "no-goal"}
+                onValueChange={(value) => setFormData({ ...formData, goal_id: value === "no-goal" ? "" : value })}
               >
                 <SelectTrigger id="edit-mission-goal">
                   <SelectValue placeholder={t("noGoal")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{t("noGoal")}</SelectItem>
+                  <SelectItem value="no-goal">{t("noGoal")}</SelectItem>
                   {goals.map((goal) => (
                     <SelectItem key={goal.id} value={goal.id}>
                       {goal.title} ({goal.category})

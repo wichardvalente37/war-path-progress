@@ -50,14 +50,30 @@ const Analytics = () => {
     return <div className="flex items-center justify-center min-h-screen">{t("loading")}</div>;
   }
 
-  // Calculate weekly data from missions
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - i));
+  // Calculate weekly data from last Monday to today
+  const getLastMonday = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday is 0, Monday is 1
+    const lastMonday = new Date(today);
+    lastMonday.setDate(today.getDate() - diff);
+    lastMonday.setHours(0, 0, 0, 0);
+    return lastMonday;
+  };
+
+  const lastMonday = getLastMonday();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const daysInWeek = Math.min(7, Math.floor((today.getTime() - lastMonday.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  
+  const weekDays = Array.from({ length: daysInWeek }, (_, i) => {
+    const date = new Date(lastMonday);
+    date.setDate(lastMonday.getDate() + i);
     return date.toISOString().split("T")[0];
   });
 
-  const weeklyData = last7Days.map((date, i) => {
+  const weeklyData = weekDays.map((date, i) => {
     const dayMissions = missions.filter(m => m.due_date === date);
     const completed = dayMissions.filter(m => m.status === "completed").length;
     const total = dayMissions.length;
@@ -254,19 +270,42 @@ const Analytics = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">Total Completed</p>
-                <p className="text-2xl font-bold text-success">57</p>
+                <p className="text-2xl font-bold text-success">
+                  {weekDays.reduce((acc, date) => {
+                    return acc + missions.filter(m => m.due_date === date && m.status === "completed").length;
+                  }, 0)}
+                </p>
               </div>
               <div className="p-4 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">Total Failed</p>
-                <p className="text-2xl font-bold text-destructive">13</p>
+                <p className="text-2xl font-bold text-destructive">
+                  {weekDays.reduce((acc, date) => {
+                    return acc + missions.filter(m => m.due_date === date && m.status === "failed").length;
+                  }, 0)}
+                </p>
               </div>
               <div className="p-4 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">XP Gained</p>
-                <p className="text-2xl font-bold text-gold">1,715</p>
+                <p className="text-2xl font-bold text-gold">
+                  {weekDays.reduce((acc, date) => {
+                    return acc + missions.filter(m => m.due_date === date && m.status === "completed")
+                      .reduce((sum, m) => sum + m.xp, 0);
+                  }, 0)}
+                </p>
               </div>
               <div className="p-4 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">Avg Completion</p>
-                <p className="text-2xl font-bold text-cyber">81%</p>
+                <p className="text-2xl font-bold text-cyber">
+                  {(() => {
+                    const totalMissions = weekDays.reduce((acc, date) => {
+                      return acc + missions.filter(m => m.due_date === date).length;
+                    }, 0);
+                    const completedMissions = weekDays.reduce((acc, date) => {
+                      return acc + missions.filter(m => m.due_date === date && m.status === "completed").length;
+                    }, 0);
+                    return totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
+                  })()}%
+                </p>
               </div>
             </div>
           </Card>

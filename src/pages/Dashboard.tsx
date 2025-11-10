@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/lib/i18n";
+import { format } from "date-fns";
 
 interface Mission {
   id: string;
@@ -14,6 +15,7 @@ interface Mission {
   difficulty: string;
   status: string;
   xp: number;
+  due_date: string;
 }
 
 const Dashboard = () => {
@@ -66,15 +68,43 @@ const Dashboard = () => {
     return <div className="flex items-center justify-center min-h-screen">{t("loading")}</div>;
   }
 
+  // Calculate streak
+  const calculateStreak = () => {
+    const sortedMissions = [...todayMissions].sort((a, b) => 
+      new Date(b.due_date).getTime() - new Date(a.due_date).getTime()
+    );
+    
+    let streak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 365; i++) {
+      const dateStr = format(currentDate, "yyyy-MM-dd");
+      const dayMissions = sortedMissions.filter(m => m.due_date === dateStr);
+      const hasCompleted = dayMissions.some(m => m.status === "completed");
+      
+      if (hasCompleted) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else if (i > 0) {
+        break;
+      } else {
+        currentDate.setDate(currentDate.getDate() - 1);
+      }
+    }
+    
+    return streak;
+  };
+
   const stats = {
     level: profile?.level || 1,
     xp: profile?.xp || 0,
     xpToNextLevel: ((profile?.level || 1) * 100),
-    streak: 23, // TODO: Calculate from missions
+    streak: calculateStreak(),
     todayMissions: todayMissions.length,
     completedMissions: todayMissions.filter(m => m.status === "completed").length,
-    weeklyScore: 85, // TODO: Calculate
-    disciplineIndex: 92, // TODO: Calculate
+    weeklyScore: todayMissions.length > 0 ? Math.round((todayMissions.filter(m => m.status === "completed").length / todayMissions.length) * 100) : 0,
+    disciplineIndex: todayMissions.length > 0 ? Math.round((todayMissions.filter(m => m.status === "completed").length / todayMissions.length) * 100) : 0,
   };
 
   const getDifficultyColor = (difficulty: string) => {

@@ -48,8 +48,9 @@ const Missions = () => {
   const [isEditMissionOpen, setIsEditMissionOpen] = useState(false);
   const [isDetailsMissionOpen, setIsDetailsMissionOpen] = useState(false);
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
-  const [dateFilter, setDateFilter] = useState<"all" | "today" | "tomorrow">("today");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "tomorrow" | "custom">("today");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed" | "failed">("all");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -208,12 +209,50 @@ const Missions = () => {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
+      const mission = missions.find(m => m.id === id);
+      if (!mission) return;
+
       const { error } = await supabase
         .from("missions")
         .update({ status: newStatus })
         .eq("id", id);
 
       if (error) throw error;
+
+      // If mission completed, update XP and level
+      if (newStatus === "completed" && mission.status !== "completed") {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("xp, level")
+          .eq("id", user?.id)
+          .single();
+
+        if (profile) {
+          const newXP = (profile.xp || 0) + mission.xp;
+          const newLevel = Math.floor(newXP / 100) + 1;
+
+          await supabase
+            .from("profiles")
+            .update({ xp: newXP, level: newLevel })
+            .eq("id", user?.id);
+        }
+
+        // Update goal progress if mission linked to goal
+        if (mission.goal_id) {
+          const { data: goal } = await supabase
+            .from("goals")
+            .select("current, target")
+            .eq("id", mission.goal_id)
+            .single();
+
+          if (goal && goal.current < goal.target) {
+            await supabase
+              .from("goals")
+              .update({ current: goal.current + 1 })
+              .eq("id", mission.goal_id);
+          }
+        }
+      }
 
       toast({ title: t("success"), description: t("missionUpdated") });
       fetchMissions();
@@ -298,6 +337,10 @@ const Missions = () => {
           const tomorrow = new Date(today);
           tomorrow.setDate(tomorrow.getDate() + 1);
           return missionDate.getTime() === tomorrow.getTime();
+        } else if (dateFilter === "custom" && selectedDate) {
+          const customDate = new Date(selectedDate);
+          customDate.setHours(0, 0, 0, 0);
+          return missionDate.getTime() === customDate.getTime();
         }
         return true;
       });
@@ -342,7 +385,7 @@ const Missions = () => {
       <Card className="p-4">
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
-            <Label>{t("dueDate")}</Label>
+            <Label>{t("filters")}</Label>
             <Select value={dateFilter} onValueChange={(value: any) => setDateFilter(value)}>
               <SelectTrigger>
                 <SelectValue />
@@ -351,9 +394,38 @@ const Missions = () => {
                 <SelectItem value="all">{t("all")}</SelectItem>
                 <SelectItem value="today">{t("today")}</SelectItem>
                 <SelectItem value="tomorrow">{t("tomorrow")}</SelectItem>
+                <SelectItem value="custom">Data específica</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {dateFilter === "custom" && (
+            <div className="flex-1 min-w-[200px]">
+              <Label>Selecionar Data</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
           <div className="flex-1 min-w-[200px]">
             <Label>{t("status")}</Label>
             <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>

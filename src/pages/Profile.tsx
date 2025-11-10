@@ -67,13 +67,41 @@ const Profile = () => {
     return <div className="flex items-center justify-center min-h-screen">{t("loading")}</div>;
   }
 
+  // Calculate streak
+  const calculateStreak = () => {
+    const sortedMissions = [...missions].sort((a, b) => 
+      new Date(b.due_date).getTime() - new Date(a.due_date).getTime()
+    );
+    
+    let streak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 365; i++) {
+      const dateStr = currentDate.toISOString().split("T")[0];
+      const dayMissions = sortedMissions.filter(m => m.due_date === dateStr);
+      const hasCompleted = dayMissions.some(m => m.status === "completed");
+      
+      if (hasCompleted) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else if (i > 0) {
+        break;
+      } else {
+        currentDate.setDate(currentDate.getDate() - 1);
+      }
+    }
+    
+    return streak;
+  };
+
   const stats = {
     totalMissions: missions.length,
     completed: missions.filter(m => m.status === "completed").length,
     failed: missions.filter(m => m.status === "failed").length,
-    streak: 23, // TODO: Calculate
-    bestStreak: 45, // TODO: Calculate
-    totalDays: 67, // TODO: Calculate
+    streak: calculateStreak(),
+    bestStreak: calculateStreak(), // For now, same as current
+    totalDays: new Set(missions.filter(m => m.status === "completed").map(m => m.due_date)).size,
     disciplineScore: missions.length > 0 ? Math.round((missions.filter(m => m.status === "completed").length / missions.length) * 100) : 0,
   };
 

@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Target, Crown, TrendingUp, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Target, Crown, TrendingUp, Edit, Trash2, Eye, ChevronUp, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -128,6 +128,27 @@ const Goals = () => {
     }
   };
 
+  const handleProgressChange = async (goalId: string, increment: number) => {
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) return;
+
+      const newCurrent = Math.max(0, Math.min(goal.target, goal.current + increment));
+
+      const { error } = await supabase
+        .from("goals")
+        .update({ current: newCurrent })
+        .eq("id", goalId);
+
+      if (error) throw error;
+
+      toast({ title: t("success"), description: "Progress updated" });
+      fetchGoals();
+    } catch (error: any) {
+      toast({ title: t("error"), description: error.message, variant: "destructive" });
+    }
+  };
+
   const openEditDialog = (goal: Goal) => {
     setSelectedGoal(goal);
     setFormData({
@@ -188,16 +209,27 @@ const Goals = () => {
       <div className="space-y-4">
         {goals.filter(g => categoryFilter === "all" || (g as any).category === categoryFilter).map((goal) => {
           const progress = goal.target > 0 ? (goal.current / goal.target) * 100 : 0;
+          const isBossBattle = (goal as any).category === "boss_battle";
           
           return (
             <Card
               key={goal.id}
-              className="p-6 hover:border-primary/30 transition-all"
+              className={`p-6 hover:border-primary/30 transition-all ${
+                isBossBattle ? "bg-gradient-to-br from-war-orange/10 to-primary/10 border-war-orange/30 shadow-glow-war" : ""
+              }`}
             >
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold mb-1">{goal.title}</h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-bold">{goal.title}</h3>
+                      {isBossBattle && (
+                        <Badge className="bg-gradient-war border-0 text-white">
+                          <Crown className="w-3 h-3 mr-1" />
+                          BOSS BATTLE
+                        </Badge>
+                      )}
+                    </div>
                     {goal.description && (
                       <p className="text-sm text-muted-foreground">{goal.description}</p>
                     )}
@@ -207,11 +239,31 @@ const Goals = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">{t("progress")}</span>
-                    <span className="font-medium">
-                      {goal.current} / {goal.target} ({Math.round(progress)}%)
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-6 w-6 p-0"
+                        onClick={() => handleProgressChange(goal.id, -1)}
+                        disabled={goal.current <= 0}
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                      <span className="font-medium min-w-[120px] text-center">
+                        {goal.current} / {goal.target} ({Math.round(progress)}%)
+                      </span>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-6 w-6 p-0"
+                        onClick={() => handleProgressChange(goal.id, 1)}
+                        disabled={goal.current >= goal.target}
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                  <Progress value={progress} className="h-3" />
+                  <Progress value={progress} className={`h-3 ${isBossBattle ? "[&>div]:bg-gradient-war" : ""}`} />
                 </div>
 
                 <div className="flex gap-2 pt-4 border-t border-border">

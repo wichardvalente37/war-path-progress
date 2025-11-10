@@ -2,27 +2,80 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Flame, Target, Zap, Award, TrendingUp, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { t } from "@/lib/i18n";
+
+interface Mission {
+  id: string;
+  title: string;
+  difficulty: string;
+  status: string;
+  xp: number;
+}
 
 const Dashboard = () => {
-  // Mock data - will be replaced with real data from backend
-  const stats = {
-    level: 12,
-    xp: 2340,
-    xpToNextLevel: 3000,
-    streak: 23,
-    todayMissions: 5,
-    completedMissions: 3,
-    weeklyScore: 85,
-    disciplineIndex: 92,
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [todayMissions, setTodayMissions] = useState<Mission[]>([]);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+      setProfile(profileData);
+
+      // Fetch today's missions
+      const today = new Date().toISOString().split("T")[0];
+      const { data: missionsData, error: missionsError } = await supabase
+        .from("missions")
+        .select("*")
+        .eq("user_id", user?.id)
+        .eq("due_date", today);
+
+      if (missionsError) throw missionsError;
+      setTodayMissions(missionsData || []);
+    } catch (error: any) {
+      toast({
+        title: t("error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const todayMissions = [
-    { id: 1, title: "Morning Workout", difficulty: "hard", completed: true, xp: 50 },
-    { id: 2, title: "Read 30 pages", difficulty: "normal", completed: true, xp: 30 },
-    { id: 3, title: "Code for 2 hours", difficulty: "hard", completed: true, xp: 50 },
-    { id: 4, title: "Meditation 15min", difficulty: "easy", completed: false, xp: 20 },
-    { id: 5, title: "No social media", difficulty: "extreme", completed: false, xp: 100 },
-  ];
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">{t("loading")}</div>;
+  }
+
+  const stats = {
+    level: profile?.level || 1,
+    xp: profile?.xp || 0,
+    xpToNextLevel: ((profile?.level || 1) * 100),
+    streak: 23, // TODO: Calculate from missions
+    todayMissions: todayMissions.length,
+    completedMissions: todayMissions.filter(m => m.status === "completed").length,
+    weeklyScore: 85, // TODO: Calculate
+    disciplineIndex: 92, // TODO: Calculate
+  };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -123,7 +176,7 @@ const Dashboard = () => {
             <Card
               key={mission.id}
               className={`p-4 transition-all ${
-                mission.completed
+                mission.status === "completed"
                   ? "bg-success/10 border-success/30"
                   : "hover:border-primary/50"
               }`}
@@ -132,12 +185,12 @@ const Dashboard = () => {
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
-                      mission.completed
+                      mission.status === "completed"
                         ? "bg-success border-success"
                         : "border-muted-foreground"
                     }`}
                   >
-                    {mission.completed && (
+                    {mission.status === "completed" && (
                       <svg
                         className="w-5 h-5 text-white"
                         fill="none"
@@ -154,7 +207,7 @@ const Dashboard = () => {
                     )}
                   </div>
                   <div>
-                    <h3 className={`font-medium ${mission.completed ? "line-through text-muted-foreground" : ""}`}>
+                    <h3 className={`font-medium ${mission.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
                       {mission.title}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">

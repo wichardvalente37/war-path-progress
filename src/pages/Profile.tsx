@@ -12,25 +12,80 @@ import {
   Settings,
   Zap,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { t } from "@/lib/i18n";
 
 const Profile = () => {
-  const profile = {
-    name: "Warrior",
-    level: 12,
-    xp: 2340,
-    xpToNextLevel: 3000,
-    totalXp: 15340,
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [profile, setProfile] = useState<any>(null);
+  const [missions, setMissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Fetch missions
+      const { data: missionsData, error: missionsError } = await supabase
+        .from("missions")
+        .select("*")
+        .eq("user_id", user?.id);
+
+      if (missionsError) throw missionsError;
+
+      setProfile(profileData);
+      setMissions(missionsData || []);
+    } catch (error: any) {
+      toast({
+        title: t("error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">{t("loading")}</div>;
+  }
+
+  const stats = {
+    totalMissions: missions.length,
+    completed: missions.filter(m => m.status === "completed").length,
+    failed: missions.filter(m => m.status === "failed").length,
+    streak: 23, // TODO: Calculate
+    bestStreak: 45, // TODO: Calculate
+    totalDays: 67, // TODO: Calculate
+    disciplineScore: missions.length > 0 ? Math.round((missions.filter(m => m.status === "completed").length / missions.length) * 100) : 0,
+  };
+
+  const profileData = {
+    name: profile?.username || "Warrior",
+    level: profile?.level || 1,
+    xp: profile?.xp || 0,
+    xpToNextLevel: ((profile?.level || 1) * 100),
+    totalXp: profile?.xp || 0,
     rank: "Elite Soldier",
-    joinDate: "Jan 2025",
-    stats: {
-      totalMissions: 156,
-      completed: 142,
-      failed: 8,
-      streak: 23,
-      bestStreak: 45,
-      totalDays: 67,
-      disciplineScore: 92,
-    },
+    joinDate: new Date(profile?.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    stats,
   };
 
   return (
@@ -56,25 +111,25 @@ const Profile = () => {
           <div className="flex-1">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h2 className="text-2xl font-bold">{profile.name}</h2>
+                <h2 className="text-2xl font-bold">{profileData.name}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Member since {profile.joinDate}
+                  Member since {profileData.joinDate}
                 </p>
               </div>
               <Badge className="bg-gradient-elite border-0 text-black font-bold px-4 py-2">
-                {profile.rank}
+                {profileData.rank}
               </Badge>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Level {profile.level}</span>
+                <span className="text-muted-foreground">Level {profileData.level}</span>
                 <span className="font-medium">
-                  {profile.xp} / {profile.xpToNextLevel} XP
+                  {profileData.xp} / {profileData.xpToNextLevel} XP
                 </span>
               </div>
               <Progress
-                value={(profile.xp / profile.xpToNextLevel) * 100}
+                value={(profileData.xp / profileData.xpToNextLevel) * 100}
                 className="h-3"
               />
             </div>
@@ -89,7 +144,7 @@ const Profile = () => {
             <Flame className="w-8 h-8 text-white" />
             <div>
               <p className="text-xs text-white/80">Current Streak</p>
-              <p className="text-2xl font-bold text-white">{profile.stats.streak} days</p>
+              <p className="text-2xl font-bold text-white">{stats.streak} days</p>
             </div>
           </div>
         </Card>
@@ -99,7 +154,7 @@ const Profile = () => {
             <Award className="w-8 h-8 text-black" />
             <div>
               <p className="text-xs text-black/80">Total XP</p>
-              <p className="text-2xl font-bold text-black">{profile.totalXp.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-black">{profileData.totalXp.toLocaleString()}</p>
             </div>
           </div>
         </Card>
@@ -118,7 +173,7 @@ const Profile = () => {
               <Target className="w-5 h-5 text-muted-foreground" />
               <span className="text-sm font-medium">Total Missions</span>
             </div>
-            <span className="text-lg font-bold">{profile.stats.totalMissions}</span>
+            <span className="text-lg font-bold">{stats.totalMissions}</span>
           </div>
 
           <div className="flex items-center justify-between py-3 border-b border-border">
@@ -126,7 +181,7 @@ const Profile = () => {
               <Zap className="w-5 h-5 text-success" />
               <span className="text-sm font-medium">Completed</span>
             </div>
-            <span className="text-lg font-bold text-success">{profile.stats.completed}</span>
+            <span className="text-lg font-bold text-success">{stats.completed}</span>
           </div>
 
           <div className="flex items-center justify-between py-3 border-b border-border">
@@ -134,7 +189,7 @@ const Profile = () => {
               <Flame className="w-5 h-5 text-primary" />
               <span className="text-sm font-medium">Best Streak</span>
             </div>
-            <span className="text-lg font-bold">{profile.stats.bestStreak} days</span>
+            <span className="text-lg font-bold">{stats.bestStreak} days</span>
           </div>
 
           <div className="flex items-center justify-between py-3 border-b border-border">
@@ -142,15 +197,15 @@ const Profile = () => {
               <Calendar className="w-5 h-5 text-muted-foreground" />
               <span className="text-sm font-medium">Total Active Days</span>
             </div>
-            <span className="text-lg font-bold">{profile.stats.totalDays}</span>
+            <span className="text-lg font-bold">{stats.totalDays}</span>
           </div>
 
           <div className="pt-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">Discipline Score</span>
-              <span className="text-lg font-bold text-primary">{profile.stats.disciplineScore}%</span>
+              <span className="text-lg font-bold text-primary">{stats.disciplineScore}%</span>
             </div>
-            <Progress value={profile.stats.disciplineScore} className="h-3" />
+            <Progress value={stats.disciplineScore} className="h-3" />
           </div>
         </div>
       </Card>
@@ -162,22 +217,22 @@ const Profile = () => {
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Completed</span>
             <span className="text-sm font-medium text-success">
-              {Math.round((profile.stats.completed / profile.stats.totalMissions) * 100)}%
+              {stats.totalMissions > 0 ? Math.round((stats.completed / stats.totalMissions) * 100) : 0}%
             </span>
           </div>
           <Progress
-            value={(profile.stats.completed / profile.stats.totalMissions) * 100}
+            value={stats.totalMissions > 0 ? (stats.completed / stats.totalMissions) * 100 : 0}
             className="h-2 bg-muted [&>div]:bg-success"
           />
           
           <div className="flex items-center justify-between mt-4">
             <span className="text-sm text-muted-foreground">Failed</span>
             <span className="text-sm font-medium text-destructive">
-              {Math.round((profile.stats.failed / profile.stats.totalMissions) * 100)}%
+              {stats.totalMissions > 0 ? Math.round((stats.failed / stats.totalMissions) * 100) : 0}%
             </span>
           </div>
           <Progress
-            value={(profile.stats.failed / profile.stats.totalMissions) * 100}
+            value={stats.totalMissions > 0 ? (stats.failed / stats.totalMissions) * 100 : 0}
             className="h-2 bg-muted [&>div]:bg-destructive"
           />
         </div>

@@ -5,23 +5,69 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, TrendingUp, Calendar, Filter, Target, Flame, Award, Zap } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { t } from "@/lib/i18n";
 
 const Analytics = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [timeRange, setTimeRange] = useState("7days");
   const [category, setCategory] = useState("all");
+  const [missions, setMissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data
-  const weeklyData = [
-    { day: "Mon", completed: 8, total: 10, rate: 80 },
-    { day: "Tue", completed: 9, total: 10, rate: 90 },
-    { day: "Wed", completed: 7, total: 10, rate: 70 },
-    { day: "Thu", completed: 10, total: 10, rate: 100 },
-    { day: "Fri", completed: 8, total: 10, rate: 80 },
-    { day: "Sat", completed: 6, total: 10, rate: 60 },
-    { day: "Sun", completed: 9, total: 10, rate: 90 },
-  ];
+  useEffect(() => {
+    if (user) {
+      fetchMissions();
+    }
+  }, [user]);
+
+  const fetchMissions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("missions")
+        .select("*")
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+      setMissions(data || []);
+    } catch (error: any) {
+      toast({
+        title: t("error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">{t("loading")}</div>;
+  }
+
+  // Calculate weekly data from missions
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    return date.toISOString().split("T")[0];
+  });
+
+  const weeklyData = last7Days.map((date, i) => {
+    const dayMissions = missions.filter(m => m.due_date === date);
+    const completed = dayMissions.filter(m => m.status === "completed").length;
+    const total = dayMissions.length;
+    return {
+      day: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
+      completed,
+      total,
+      rate: total > 0 ? Math.round((completed / total) * 100) : 0,
+    };
+  });
 
   const categoryStats = [
     { name: "Fitness", completed: 45, total: 50, xp: 2250, color: "text-war-orange" },
@@ -38,10 +84,10 @@ const Analytics = () => {
   };
 
   const performanceMetrics = {
-    completionRate: 87,
-    avgDailyXP: 245,
-    totalMissions: 156,
-    disciplineScore: 92,
+    completionRate: missions.length > 0 ? Math.round((missions.filter(m => m.status === "completed").length / missions.length) * 100) : 0,
+    avgDailyXP: missions.length > 0 ? Math.round(missions.reduce((acc, m) => acc + m.xp, 0) / 7) : 0,
+    totalMissions: missions.length,
+    disciplineScore: missions.length > 0 ? Math.round((missions.filter(m => m.status === "completed").length / missions.length) * 100) : 0,
   };
 
   return (

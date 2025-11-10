@@ -1,64 +1,60 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Award, Flame, Target, Zap, Crown, Lock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { t } from "@/lib/i18n";
 
 const Achievements = () => {
-  const achievements = [
-    {
-      id: 1,
-      title: "First Blood",
-      description: "Complete your first mission",
-      icon: Zap,
-      unlocked: true,
-      rarity: "common",
-    },
-    {
-      id: 2,
-      title: "Week Warrior",
-      description: "Maintain a 7-day streak",
-      icon: Flame,
-      unlocked: true,
-      rarity: "uncommon",
-    },
-    {
-      id: 3,
-      title: "Unstoppable",
-      description: "Maintain a 30-day streak",
-      icon: Target,
-      unlocked: false,
-      rarity: "rare",
-      progress: 23,
-      target: 30,
-    },
-    {
-      id: 4,
-      title: "Level 10 Elite",
-      description: "Reach level 10",
-      icon: Award,
-      unlocked: true,
-      rarity: "rare",
-    },
-    {
-      id: 5,
-      title: "Perfect Month",
-      description: "Complete all missions for 30 consecutive days",
-      icon: Crown,
-      unlocked: false,
-      rarity: "legendary",
-      progress: 0,
-      target: 30,
-    },
-    {
-      id: 6,
-      title: "Boss Slayer",
-      description: "Complete your first Boss Battle",
-      icon: Trophy,
-      unlocked: false,
-      rarity: "epic",
-      progress: 0,
-      target: 1,
-    },
-  ];
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchAchievements();
+    }
+  }, [user]);
+
+  const fetchAchievements = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("achievements")
+        .select("*")
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+      setAchievements(data || []);
+    } catch (error: any) {
+      toast({
+        title: t("error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">{t("loading")}</div>;
+  }
+
+  // Map icon names to icon components
+  const getIcon = (iconName: string) => {
+    const icons: any = { Trophy, Award, Flame, Target, Zap, Crown };
+    return icons[iconName] || Target;
+  };
+
+  const achievementsData = achievements.map(a => ({
+    ...a,
+    icon: getIcon(a.icon || "Target"),
+    unlocked: true,
+    rarity: "common",
+  }));
 
   const getRarityConfig = (rarity: string) => {
     switch (rarity) {
@@ -78,9 +74,9 @@ const Achievements = () => {
   };
 
   const stats = {
-    totalAchievements: achievements.length,
-    unlocked: achievements.filter(a => a.unlocked).length,
-    points: achievements.filter(a => a.unlocked).length * 100,
+    totalAchievements: achievementsData.length,
+    unlocked: achievementsData.filter(a => a.unlocked).length,
+    points: achievementsData.filter(a => a.unlocked).length * 100,
   };
 
   return (
@@ -113,7 +109,12 @@ const Achievements = () => {
 
       {/* Achievements Grid */}
       <div className="grid gap-4">
-        {achievements.map((achievement) => {
+        {achievementsData.length === 0 ? (
+          <Card className="p-12 text-center">
+            <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">No achievements yet. Complete missions to unlock them!</p>
+          </Card>
+        ) : achievementsData.map((achievement) => {
           const Icon = achievement.icon;
           const rarityConfig = getRarityConfig(achievement.rarity);
           

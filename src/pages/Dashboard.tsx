@@ -96,6 +96,8 @@ const Dashboard = () => {
     return streak;
   };
 
+  const finalisedMissions = todayMissions.filter(m => m.status === "completed" || m.status === "failed");
+  
   const stats = {
     level: profile?.level || 1,
     xp: profile?.xp || 0,
@@ -104,7 +106,7 @@ const Dashboard = () => {
     todayMissions: todayMissions.length,
     completedMissions: todayMissions.filter(m => m.status === "completed").length,
     weeklyScore: todayMissions.length > 0 ? Math.round((todayMissions.filter(m => m.status === "completed").length / todayMissions.length) * 100) : 0,
-    disciplineIndex: todayMissions.length > 0 ? Math.round((todayMissions.filter(m => m.status === "completed").length / todayMissions.length) * 100) : 0,
+    disciplineIndex: finalisedMissions.length > 0 ? Math.round((todayMissions.filter(m => m.status === "completed").length / finalisedMissions.length) * 100) : 0,
   };
 
   const getDifficultyColor = (difficulty: string) => {

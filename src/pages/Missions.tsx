@@ -60,7 +60,7 @@ const Missions = () => {
     due_date: new Date(),
     goal_id: "",
     is_recurring: false,
-    recurrence_pattern: [] as number[],
+    recurrence_count: 7,
   });
 
   useEffect(() => {
@@ -112,30 +112,27 @@ const Missions = () => {
 
   const handleCreateMission = async () => {
     try {
-      if (formData.is_recurring && formData.recurrence_pattern.length > 0) {
-        // Create recurring missions for next 30 days
-        const today = new Date();
+      if (formData.is_recurring && formData.recurrence_count > 0) {
+        // Create multiple copies of the mission
+        const startDate = formData.due_date;
         const missionsToCreate = [];
         
-        for (let i = 0; i < 30; i++) {
-          const date = new Date(today);
+        for (let i = 0; i < formData.recurrence_count; i++) {
+          const date = new Date(startDate);
           date.setDate(date.getDate() + i);
-          const dayOfWeek = date.getDay();
           
-          if (formData.recurrence_pattern.includes(dayOfWeek)) {
-            missionsToCreate.push({
-              user_id: user?.id,
-              title: formData.title,
-              description: formData.description,
-              difficulty: formData.difficulty,
-              xp: formData.xp,
-              status: "pending",
-              due_date: format(date, "yyyy-MM-dd"),
-              goal_id: formData.goal_id || null,
-              is_recurring: true,
-              recurrence_pattern: JSON.stringify({ days: formData.recurrence_pattern }),
-            });
-          }
+          missionsToCreate.push({
+            user_id: user?.id,
+            title: formData.title,
+            description: formData.description,
+            difficulty: formData.difficulty,
+            xp: formData.xp,
+            status: "pending",
+            due_date: format(date, "yyyy-MM-dd"),
+            goal_id: formData.goal_id || null,
+            is_recurring: true,
+            recurrence_pattern: `${formData.recurrence_count} copies`,
+          });
         }
 
         const { error } = await supabase.from("missions").insert(missionsToCreate);
@@ -271,7 +268,7 @@ const Missions = () => {
       due_date: new Date(),
       goal_id: "",
       is_recurring: false,
-      recurrence_pattern: [],
+      recurrence_count: 7,
     });
   };
 
@@ -286,9 +283,7 @@ const Missions = () => {
       due_date: new Date(mission.due_date),
       goal_id: mission.goal_id || "",
       is_recurring: mission.is_recurring,
-      recurrence_pattern: mission.recurrence_pattern
-        ? JSON.parse(mission.recurrence_pattern).days
-        : [],
+      recurrence_count: 7,
     });
     setIsEditMissionOpen(true);
   };
@@ -653,39 +648,46 @@ const Missions = () => {
                 </Popover>
               </div>
             ) : (
-              <div>
-                <Label>{t("recurringDays")}</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {[
-                    { day: 0, label: t("sunday") },
-                    { day: 1, label: t("monday") },
-                    { day: 2, label: t("tuesday") },
-                    { day: 3, label: t("wednesday") },
-                    { day: 4, label: t("thursday") },
-                    { day: 5, label: t("friday") },
-                    { day: 6, label: t("saturday") },
-                  ].map(({ day, label }) => (
-                    <div key={day} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`day-${day}`}
-                        checked={formData.recurrence_pattern.includes(day)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormData({
-                              ...formData,
-                              recurrence_pattern: [...formData.recurrence_pattern, day],
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              recurrence_pattern: formData.recurrence_pattern.filter((d) => d !== day),
-                            });
-                          }
-                        }}
+              <div className="space-y-4">
+                <div>
+                  <Label>{t("dueDate")}</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formData.due_date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.due_date ? format(formData.due_date, "PPP") : <span>Pick a start date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.due_date}
+                        onSelect={(date) => date && setFormData({ ...formData, due_date: date })}
+                        initialFocus
+                        className="pointer-events-auto"
                       />
-                      <Label htmlFor={`day-${day}`}>{label}</Label>
-                    </div>
-                  ))}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label htmlFor="recurrence-count">{t("numberOfCopies")} (dias consecutivos)</Label>
+                  <Input
+                    id="recurrence-count"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={formData.recurrence_count}
+                    onChange={(e) => setFormData({ ...formData, recurrence_count: parseInt(e.target.value) || 1 })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Criará {formData.recurrence_count} missões em dias consecutivos começando na data selecionada
+                  </p>
                 </div>
               </div>
             )}

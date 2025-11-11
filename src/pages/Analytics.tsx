@@ -85,25 +85,107 @@ const Analytics = () => {
     };
   });
 
-  const categoryStats = [
-    { name: "Fitness", completed: 45, total: 50, xp: 2250, color: "text-war-orange" },
-    { name: "Learning", completed: 38, total: 45, xp: 1520, color: "text-cyber" },
-    { name: "Health", completed: 42, total: 45, xp: 1680, color: "text-success" },
-    { name: "Productivity", completed: 35, total: 40, xp: 1400, color: "text-gold" },
-  ];
-
-  const streakData = {
-    current: 23,
-    longest: 45,
-    total: 156,
-    thisMonth: 18,
+  // Calculate category stats from real missions
+  const getCategoryStats = () => {
+    const categories = ["Fitness", "Learning", "Health", "Productivity"];
+    const colors = ["text-war-orange", "text-cyber", "text-success", "text-gold"];
+    
+    return categories.map((name, idx) => {
+      const categoryMissions = missions.filter(m => 
+        m.title.toLowerCase().includes(name.toLowerCase()) ||
+        m.description?.toLowerCase().includes(name.toLowerCase())
+      );
+      const completed = categoryMissions.filter(m => m.status === "completed").length;
+      const xp = categoryMissions
+        .filter(m => m.status === "completed")
+        .reduce((sum, m) => sum + m.xp, 0);
+      
+      return {
+        name,
+        completed,
+        total: categoryMissions.length,
+        xp,
+        color: colors[idx],
+      };
+    }).filter(cat => cat.total > 0); // Only show categories with missions
   };
+  
+  const categoryStats = getCategoryStats();
 
+  // Calculate real streak data
+  const calculateStreakData = () => {
+    const sortedMissions = [...missions].sort((a, b) => 
+      new Date(b.due_date).getTime() - new Date(a.due_date).getTime()
+    );
+    
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let tempStreak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    
+    // Calculate current streak
+    for (let i = 0; i < 365; i++) {
+      const dateStr = currentDate.toISOString().split("T")[0];
+      const dayMissions = sortedMissions.filter(m => m.due_date === dateStr);
+      const hasCompleted = dayMissions.some(m => m.status === "completed");
+      
+      if (hasCompleted) {
+        currentStreak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else if (i > 0) {
+        break;
+      } else {
+        currentDate.setDate(currentDate.getDate() - 1);
+      }
+    }
+    
+    // Calculate longest streak
+    const uniqueDates = [...new Set(sortedMissions.map(m => m.due_date))].sort();
+    for (const date of uniqueDates) {
+      const dayMissions = sortedMissions.filter(m => m.due_date === date);
+      const hasCompleted = dayMissions.some(m => m.status === "completed");
+      
+      if (hasCompleted) {
+        tempStreak++;
+        longestStreak = Math.max(longestStreak, tempStreak);
+      } else {
+        tempStreak = 0;
+      }
+    }
+    
+    // Calculate this month
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const thisMonthMissions = missions.filter(m => new Date(m.due_date) >= thisMonthStart);
+    const thisMonthDays = new Set(
+      thisMonthMissions
+        .filter(m => m.status === "completed")
+        .map(m => m.due_date)
+    ).size;
+    
+    // Calculate total active days
+    const totalDays = new Set(
+      missions.filter(m => m.status === "completed").map(m => m.due_date)
+    ).size;
+    
+    return {
+      current: currentStreak,
+      longest: longestStreak,
+      total: totalDays,
+      thisMonth: thisMonthDays,
+    };
+  };
+  
+  const streakData = calculateStreakData();
+
+  const finalisedMissions = missions.filter(m => m.status === "completed" || m.status === "failed");
+  
   const performanceMetrics = {
     completionRate: missions.length > 0 ? Math.round((missions.filter(m => m.status === "completed").length / missions.length) * 100) : 0,
-    avgDailyXP: missions.length > 0 ? Math.round(missions.reduce((acc, m) => acc + m.xp, 0) / 7) : 0,
+    avgDailyXP: missions.length > 0 ? Math.round(missions.filter(m => m.status === "completed").reduce((acc, m) => acc + m.xp, 0) / 7) : 0,
     totalMissions: missions.length,
-    disciplineScore: missions.length > 0 ? Math.round((missions.filter(m => m.status === "completed").length / missions.length) * 100) : 0,
+    disciplineScore: finalisedMissions.length > 0 ? Math.round((missions.filter(m => m.status === "completed").length / finalisedMissions.length) * 100) : 0,
   };
 
   return (
@@ -415,17 +497,24 @@ const Analytics = () => {
             <h3 className="text-lg font-bold mb-4">Consistency Heatmap</h3>
             <div className="grid grid-cols-7 gap-2">
               {Array.from({ length: 28 }).map((_, i) => {
-                const intensity = Math.random();
+                const date = new Date();
+                date.setDate(date.getDate() - (27 - i));
+                const dateStr = date.toISOString().split("T")[0];
+                const dayMissions = missions.filter(m => m.due_date === dateStr);
+                const completed = dayMissions.filter(m => m.status === "completed").length;
+                const intensity = dayMissions.length > 0 ? completed / dayMissions.length : 0;
+                
                 return (
                   <div
                     key={i}
                     className={`aspect-square rounded-sm ${
-                      intensity > 0.75 ? "bg-success" :
-                      intensity > 0.5 ? "bg-success/70" :
-                      intensity > 0.25 ? "bg-success/40" :
+                      intensity === 1 && completed > 0 ? "bg-success" :
+                      intensity >= 0.7 ? "bg-success/70" :
+                      intensity >= 0.4 ? "bg-success/40" :
+                      completed > 0 ? "bg-success/20" :
                       "bg-muted"
                     }`}
-                    title={`Day ${i + 1}`}
+                    title={`${dateStr}: ${completed}/${dayMissions.length} completed`}
                   />
                 );
               })}

@@ -95,6 +95,8 @@ const Profile = () => {
     return streak;
   };
 
+  const finalisedMissions = missions.filter(m => m.status === "completed" || m.status === "failed");
+  
   const stats = {
     totalMissions: missions.length,
     completed: missions.filter(m => m.status === "completed").length,
@@ -102,16 +104,30 @@ const Profile = () => {
     streak: calculateStreak(),
     bestStreak: calculateStreak(), // For now, same as current
     totalDays: new Set(missions.filter(m => m.status === "completed").map(m => m.due_date)).size,
-    disciplineScore: missions.length > 0 ? Math.round((missions.filter(m => m.status === "completed").length / missions.length) * 100) : 0,
+    disciplineScore: finalisedMissions.length > 0 ? Math.round((missions.filter(m => m.status === "completed").length / finalisedMissions.length) * 100) : 0,
   };
 
+  // Calculate rank based on level and XP
+  const getRank = () => {
+    const level = profile?.level || 1;
+    const completed = stats.completed;
+    
+    if (level >= 20 || completed >= 200) return "Legendary Warrior";
+    if (level >= 15 || completed >= 150) return "Elite Commander";
+    if (level >= 10 || completed >= 100) return "Elite Soldier";
+    if (level >= 7 || completed >= 50) return "Veteran Fighter";
+    if (level >= 5 || completed >= 25) return "Skilled Warrior";
+    if (level >= 3 || completed >= 10) return "Rising Soldier";
+    return "Rookie";
+  };
+  
   const profileData = {
     name: profile?.username || "Warrior",
     level: profile?.level || 1,
     xp: profile?.xp || 0,
     xpToNextLevel: ((profile?.level || 1) * 100),
     totalXp: profile?.xp || 0,
-    rank: "Elite Soldier",
+    rank: getRank(),
     joinDate: new Date(profile?.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
     stats,
   };

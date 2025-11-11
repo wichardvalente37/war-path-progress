@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Target, Crown, TrendingUp, Edit, Trash2, Eye, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Target, Crown, TrendingUp, Edit, Trash2, Eye, ChevronUp, ChevronDown, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,31 +21,63 @@ interface Goal {
   target: number;
   current: number;
   created_at: string;
+  category: string;
+  difficulty: string;
+}
+
+interface GoalCategory {
+  id: string;
+  name: string;
 }
 
 const Goals = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [categories, setCategories] = useState<GoalCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewGoalOpen, setIsNewGoalOpen] = useState(false);
   const [isEditGoalOpen, setIsEditGoalOpen] = useState(false);
   const [isDetailsGoalOpen, setIsDetailsGoalOpen] = useState(false);
+  const [isCategoryManageOpen, setIsCategoryManageOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     target: 100,
     current: 0,
-    category: "standard",
+    category: "",
+    difficulty: "normal",
   });
 
   useEffect(() => {
     if (user) {
       fetchGoals();
+      fetchCategories();
     }
   }, [user]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("goal_categories")
+        .select("*")
+        .eq("user_id", user?.id)
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error: any) {
+      toast({
+        title: t("error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchGoals = async () => {
     try {
@@ -68,6 +100,40 @@ const Goals = () => {
     }
   };
 
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    
+    try {
+      const { error } = await supabase
+        .from("goal_categories")
+        .insert({ user_id: user?.id, name: newCategoryName.trim() });
+
+      if (error) throw error;
+
+      toast({ title: t("success"), description: "Categoria adicionada" });
+      setNewCategoryName("");
+      fetchCategories();
+    } catch (error: any) {
+      toast({ title: t("error"), description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      const { error } = await supabase
+        .from("goal_categories")
+        .delete()
+        .eq("id", categoryId);
+
+      if (error) throw error;
+
+      toast({ title: t("success"), description: "Categoria removida" });
+      fetchCategories();
+    } catch (error: any) {
+      toast({ title: t("error"), description: error.message, variant: "destructive" });
+    }
+  };
+
   const handleCreateGoal = async () => {
     try {
       const { error } = await supabase.from("goals").insert({
@@ -77,13 +143,14 @@ const Goals = () => {
         target: formData.target,
         current: formData.current,
         category: formData.category,
+        difficulty: formData.difficulty,
       });
 
       if (error) throw error;
 
       toast({ title: t("success"), description: t("goalCreated") });
       setIsNewGoalOpen(false);
-      setFormData({ title: "", description: "", target: 100, current: 0, category: "standard" });
+      setFormData({ title: "", description: "", target: 100, current: 0, category: "", difficulty: "normal" });
       fetchGoals();
     } catch (error: any) {
       toast({ title: t("error"), description: error.message, variant: "destructive" });
@@ -101,6 +168,8 @@ const Goals = () => {
           description: formData.description,
           target: formData.target,
           current: formData.current,
+          category: formData.category,
+          difficulty: formData.difficulty,
         })
         .eq("id", selectedGoal.id);
 
@@ -156,7 +225,8 @@ const Goals = () => {
       description: goal.description || "",
       target: goal.target,
       current: goal.current,
-      category: (goal as any).category || "standard",
+      category: goal.category || "",
+      difficulty: goal.difficulty || "normal",
     });
     setIsEditGoalOpen(true);
   };
@@ -165,6 +235,22 @@ const Goals = () => {
     setSelectedGoal(goal);
     setIsDetailsGoalOpen(true);
   };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case "easy": return "text-success";
+      case "normal": return "text-cyber";
+      case "hard": return "text-war-orange";
+      case "extreme": return "text-primary";
+      default: return "text-foreground";
+    }
+  };
+
+  const filteredGoals = goals.filter(g => {
+    const categoryMatch = categoryFilter === "all" || g.category === categoryFilter;
+    const difficultyMatch = difficultyFilter === "all" || g.difficulty === difficultyFilter;
+    return categoryMatch && difficultyMatch;
+  });
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">{t("loading")}</div>;
@@ -182,34 +268,58 @@ const Goals = () => {
             {goals.length} {goals.length === 1 ? "goal" : "goals"}
           </p>
         </div>
-        <Button className="bg-gradient-elite border-0 shadow-glow-gold text-black font-bold" onClick={() => setIsNewGoalOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          {t("newGoal")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsCategoryManageOpen(true)}>
+            Gerenciar Categorias
+          </Button>
+          <Button className="bg-gradient-elite border-0 shadow-glow-gold text-black font-bold" onClick={() => setIsNewGoalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            {t("newGoal")}
+          </Button>
+        </div>
       </div>
 
-      {/* Category Filter */}
+      {/* Filters */}
       <Card className="p-4">
-        <Label>{t("category")}</Label>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("all")}</SelectItem>
-            <SelectItem value="standard">{t("standard")}</SelectItem>
-            <SelectItem value="boss_battle">{t("bossBattle")}</SelectItem>
-            <SelectItem value="epic">{t("epic")}</SelectItem>
-            <SelectItem value="daily">{t("daily")}</SelectItem>
-            <SelectItem value="weekly">{t("weekly")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>{t("category")}</Label>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("all")}</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Dificuldade</Label>
+            <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("all")}</SelectItem>
+                <SelectItem value="easy">{t("easy")}</SelectItem>
+                <SelectItem value="normal">{t("normal")}</SelectItem>
+                <SelectItem value="hard">{t("hard")}</SelectItem>
+                <SelectItem value="extreme">{t("extreme")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </Card>
 
       <div className="space-y-4">
-        {goals.filter(g => categoryFilter === "all" || (g as any).category === categoryFilter).map((goal) => {
+        {filteredGoals.map((goal) => {
           const progress = goal.target > 0 ? (goal.current / goal.target) * 100 : 0;
-          const isBossBattle = (goal as any).category === "boss_battle";
+          const isBossBattle = goal.difficulty === "extreme";
           
           return (
             <Card
@@ -227,6 +337,14 @@ const Goals = () => {
                         <Badge className="bg-gradient-war border-0 text-white">
                           <Crown className="w-3 h-3 mr-1" />
                           BOSS BATTLE
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className={`text-xs ${getDifficultyColor(goal.difficulty)}`}>
+                        {goal.difficulty.toUpperCase()}
+                      </Badge>
+                      {goal.category && (
+                        <Badge variant="outline" className="text-xs">
+                          {goal.category}
                         </Badge>
                       )}
                     </div>
@@ -285,7 +403,7 @@ const Goals = () => {
           );
         })}
 
-        {goals.length === 0 && (
+        {filteredGoals.length === 0 && (
           <Card className="p-12 text-center">
             <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground">No goals yet. Create your first goal!</p>
@@ -309,6 +427,52 @@ const Goals = () => {
           </div>
         </div>
       </Card>
+
+      {/* Category Management Dialog */}
+      <Dialog open={isCategoryManageOpen} onOpenChange={setIsCategoryManageOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerenciar Categorias</DialogTitle>
+            <DialogDescription>Adicione ou remova categorias personalizadas</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Input 
+                placeholder="Nome da nova categoria"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
+              />
+              <Button onClick={handleAddCategory}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {categories.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma categoria criada ainda
+                </p>
+              ) : (
+                categories.map((category) => (
+                  <div key={category.id} className="flex items-center justify-between p-2 rounded border">
+                    <span className="text-sm">{category.name}</span>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => handleDeleteCategory(category.id)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsCategoryManageOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Goal Dialog */}
       <Dialog open={isNewGoalOpen} onOpenChange={setIsNewGoalOpen}>
@@ -337,23 +501,39 @@ const Goals = () => {
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="goal-category">{t("category")}</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
-                <SelectTrigger id="goal-category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="standard">{t("standard")}</SelectItem>
-                  <SelectItem value="boss_battle">{t("bossBattle")}</SelectItem>
-                  <SelectItem value="epic">{t("epic")}</SelectItem>
-                  <SelectItem value="daily">{t("daily")}</SelectItem>
-                  <SelectItem value="weekly">{t("weekly")}</SelectItem>
-                </SelectContent>
-              </Select>
+              <div>
+                <Label htmlFor="goal-category">{t("category")}</Label>
+                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                  <SelectTrigger id="goal-category">
+                    <SelectValue placeholder="Selecione categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="goal-difficulty">Dificuldade</Label>
+                <Select value={formData.difficulty} onValueChange={(value) => setFormData({...formData, difficulty: value})}>
+                  <SelectTrigger id="goal-difficulty">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">{t("easy")}</SelectItem>
+                    <SelectItem value="normal">{t("normal")}</SelectItem>
+                    <SelectItem value="hard">{t("hard")}</SelectItem>
+                    <SelectItem value="extreme">{t("extreme")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="goal-target">{t("target")}</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="goal-target">{t("target")}</Label>
                 <Input 
                   id="goal-target" 
                   type="number"
@@ -405,6 +585,37 @@ const Goals = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
+                <Label htmlFor="edit-goal-category">{t("category")}</Label>
+                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                  <SelectTrigger id="edit-goal-category">
+                    <SelectValue placeholder="Selecione categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-goal-difficulty">Dificuldade</Label>
+                <Select value={formData.difficulty} onValueChange={(value) => setFormData({...formData, difficulty: value})}>
+                  <SelectTrigger id="edit-goal-difficulty">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">{t("easy")}</SelectItem>
+                    <SelectItem value="normal">{t("normal")}</SelectItem>
+                    <SelectItem value="hard">{t("hard")}</SelectItem>
+                    <SelectItem value="extreme">{t("extreme")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
                 <Label htmlFor="edit-goal-current">{t("current")}</Label>
                 <Input 
                   id="edit-goal-current" 
@@ -442,6 +653,18 @@ const Goals = () => {
             <div>
               <Label>{t("description")}</Label>
               <p className="text-sm text-muted-foreground">{selectedGoal?.description || "No description"}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>{t("category")}</Label>
+                <p className="text-sm font-medium">{selectedGoal?.category || "Sem categoria"}</p>
+              </div>
+              <div>
+                <Label>Dificuldade</Label>
+                <Badge className={`${getDifficultyColor(selectedGoal?.difficulty || "normal")}`}>
+                  {selectedGoal?.difficulty.toUpperCase()}
+                </Badge>
+              </div>
             </div>
             <div>
               <Label>{t("progress")}</Label>

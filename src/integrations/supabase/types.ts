@@ -49,12 +49,34 @@ export type Database = {
           },
         ]
       }
+      goal_categories: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           category: string
           created_at: string | null
           current: number
           description: string | null
+          difficulty: string | null
           id: string
           target: number
           title: string
@@ -66,6 +88,7 @@ export type Database = {
           created_at?: string | null
           current?: number
           description?: string | null
+          difficulty?: string | null
           id?: string
           target?: number
           title: string
@@ -77,6 +100,7 @@ export type Database = {
           created_at?: string | null
           current?: number
           description?: string | null
+          difficulty?: string | null
           id?: string
           target?: number
           title?: string

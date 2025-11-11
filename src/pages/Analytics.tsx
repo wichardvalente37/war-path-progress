@@ -18,13 +18,33 @@ const Analytics = () => {
   const [timeRange, setTimeRange] = useState("7days");
   const [category, setCategory] = useState("all");
   const [missions, setMissions] = useState<any[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       fetchMissions();
+      fetchGoals();
     }
   }, [user]);
+
+  const fetchGoals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("goals")
+        .select("*")
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+      setGoals(data || []);
+    } catch (error: any) {
+      toast({
+        title: t("error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchMissions = async () => {
     try {
@@ -85,27 +105,29 @@ const Analytics = () => {
     };
   });
 
-  // Calculate category stats from real missions
+  // Calculate category stats from real goals
   const getCategoryStats = () => {
-    const categories = ["Fitness", "Learning", "Health", "Productivity"];
-    const colors = ["text-war-orange", "text-cyber", "text-success", "text-gold"];
+    const uniqueCategories = [...new Set(goals.map(g => g.category).filter(Boolean))];
+    const colors = ["text-war-orange", "text-cyber", "text-success", "text-gold", "text-primary"];
     
-    return categories.map((name, idx) => {
-      const categoryMissions = missions.filter(m => 
-        m.title.toLowerCase().includes(name.toLowerCase()) ||
-        m.description?.toLowerCase().includes(name.toLowerCase())
-      );
+    return uniqueCategories.map((categoryName, idx) => {
+      // Get goals from this category
+      const categoryGoals = goals.filter(g => g.category === categoryName);
+      const goalIds = categoryGoals.map(g => g.id);
+      
+      // Get missions linked to these goals
+      const categoryMissions = missions.filter(m => goalIds.includes(m.goal_id));
       const completed = categoryMissions.filter(m => m.status === "completed").length;
       const xp = categoryMissions
         .filter(m => m.status === "completed")
         .reduce((sum, m) => sum + m.xp, 0);
       
       return {
-        name,
+        name: categoryName,
         completed,
         total: categoryMissions.length,
         xp,
-        color: colors[idx],
+        color: colors[idx % colors.length],
       };
     }).filter(cat => cat.total > 0); // Only show categories with missions
   };

@@ -55,12 +55,12 @@ const Missions = () => {
     title: "",
     description: "",
     difficulty: "normal",
-    xp: 30,
     status: "pending",
     due_date: new Date(),
     goal_id: "",
     is_recurring: false,
-    recurrence_count: 7,
+    recurrence_count: 5,
+    recurrence_days: [] as number[], // 0=Sunday, 1=Monday, etc.
   });
 
   useEffect(() => {
@@ -110,29 +110,48 @@ const Missions = () => {
     }
   };
 
+  const getDifficultyXP = (difficulty: string) => {
+    switch (difficulty) {
+      case "easy": return 10;
+      case "normal": return 30;
+      case "hard": return 50;
+      case "extreme": return 100;
+      default: return 30;
+    }
+  };
+
   const handleCreateMission = async () => {
     try {
-      if (formData.is_recurring && formData.recurrence_count > 0) {
-        // Create multiple copies of the mission
-        const startDate = formData.due_date;
+      const missionXP = getDifficultyXP(formData.difficulty);
+      
+      if (formData.is_recurring && formData.recurrence_count > 0 && formData.recurrence_days.length > 0) {
+        // Create missions on specific weekdays
         const missionsToCreate = [];
+        let currentDate = new Date(formData.due_date);
+        let createdCount = 0;
         
-        for (let i = 0; i < formData.recurrence_count; i++) {
-          const date = new Date(startDate);
-          date.setDate(date.getDate() + i);
+        // Loop until we've created the required number of missions
+        while (createdCount < formData.recurrence_count) {
+          const dayOfWeek = currentDate.getDay();
           
-          missionsToCreate.push({
-            user_id: user?.id,
-            title: formData.title,
-            description: formData.description,
-            difficulty: formData.difficulty,
-            xp: formData.xp,
-            status: "pending",
-            due_date: format(date, "yyyy-MM-dd"),
-            goal_id: formData.goal_id || null,
-            is_recurring: true,
-            recurrence_pattern: `${formData.recurrence_count} copies`,
-          });
+          if (formData.recurrence_days.includes(dayOfWeek)) {
+            missionsToCreate.push({
+              user_id: user?.id,
+              title: formData.title,
+              description: formData.description,
+              difficulty: formData.difficulty,
+              xp: missionXP,
+              status: "pending",
+              due_date: format(currentDate, "yyyy-MM-dd"),
+              goal_id: formData.goal_id || null,
+              is_recurring: true,
+              recurrence_pattern: `${formData.recurrence_days.join(",")}`,
+            });
+            createdCount++;
+          }
+          
+          // Move to next day
+          currentDate.setDate(currentDate.getDate() + 1);
         }
 
         const { error } = await supabase.from("missions").insert(missionsToCreate);
@@ -143,7 +162,7 @@ const Missions = () => {
           title: formData.title,
           description: formData.description,
           difficulty: formData.difficulty,
-          xp: formData.xp,
+          xp: missionXP,
           status: "pending",
           due_date: format(formData.due_date, "yyyy-MM-dd"),
           goal_id: formData.goal_id || null,
@@ -167,13 +186,15 @@ const Missions = () => {
     if (!selectedMission) return;
 
     try {
+      const missionXP = getDifficultyXP(formData.difficulty);
+      
       const { error } = await supabase
         .from("missions")
         .update({
           title: formData.title,
           description: formData.description,
           difficulty: formData.difficulty,
-          xp: formData.xp,
+          xp: missionXP,
           status: formData.status,
           due_date: format(formData.due_date, "yyyy-MM-dd"),
           goal_id: formData.goal_id || null,
@@ -263,12 +284,12 @@ const Missions = () => {
       title: "",
       description: "",
       difficulty: "normal",
-      xp: 30,
       status: "pending",
       due_date: new Date(),
       goal_id: "",
       is_recurring: false,
-      recurrence_count: 7,
+      recurrence_count: 5,
+      recurrence_days: [],
     });
   };
 
@@ -278,12 +299,12 @@ const Missions = () => {
       title: mission.title,
       description: mission.description || "",
       difficulty: mission.difficulty,
-      xp: mission.xp,
       status: mission.status,
       due_date: new Date(mission.due_date),
       goal_id: mission.goal_id || "",
       is_recurring: mission.is_recurring,
-      recurrence_count: 7,
+      recurrence_count: 5,
+      recurrence_days: mission.recurrence_pattern ? mission.recurrence_pattern.split(",").map(Number) : [],
     });
     setIsEditMissionOpen(true);
   };
@@ -563,7 +584,7 @@ const Missions = () => {
                 placeholder="Mission description"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="mission-difficulty">{t("difficulty")}</Label>
                 <Select
@@ -574,21 +595,13 @@ const Missions = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="easy">{t("easy")}</SelectItem>
-                    <SelectItem value="normal">{t("normal")}</SelectItem>
-                    <SelectItem value="hard">{t("hard")}</SelectItem>
-                    <SelectItem value="extreme">{t("extreme")}</SelectItem>
+                    <SelectItem value="easy">{t("easy")} (10 XP)</SelectItem>
+                    <SelectItem value="normal">{t("normal")} (30 XP)</SelectItem>
+                    <SelectItem value="hard">{t("hard")} (50 XP)</SelectItem>
+                    <SelectItem value="extreme">{t("extreme")} (100 XP)</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label htmlFor="mission-xp">XP</Label>
-                <Input
-                  id="mission-xp"
-                  type="number"
-                  value={formData.xp}
-                  onChange={(e) => setFormData({ ...formData, xp: parseInt(e.target.value) || 0 })}
-                />
+                <p className="text-xs text-muted-foreground mt-1">XP é definido automaticamente pela dificuldade</p>
               </div>
             </div>
             <div>
@@ -676,7 +689,7 @@ const Missions = () => {
                   </Popover>
                 </div>
                 <div>
-                  <Label htmlFor="recurrence-count">{t("numberOfCopies")} (dias consecutivos)</Label>
+                  <Label htmlFor="recurrence-count">{t("numberOfCopies")}</Label>
                   <Input
                     id="recurrence-count"
                     type="number"
@@ -686,7 +699,38 @@ const Missions = () => {
                     onChange={(e) => setFormData({ ...formData, recurrence_count: parseInt(e.target.value) || 1 })}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Criará {formData.recurrence_count} missões em dias consecutivos começando na data selecionada
+                    Número total de missões a serem criadas
+                  </p>
+                </div>
+                <div>
+                  <Label>Dias de Recorrência</Label>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {[
+                      { day: 0, label: "Dom" },
+                      { day: 1, label: "Seg" },
+                      { day: 2, label: "Ter" },
+                      { day: 3, label: "Qua" },
+                      { day: 4, label: "Qui" },
+                      { day: 5, label: "Sex" },
+                      { day: 6, label: "Sáb" },
+                    ].map(({ day, label }) => (
+                      <div key={day} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`day-${day}`}
+                          checked={formData.recurrence_days.includes(day)}
+                          onCheckedChange={(checked) => {
+                            const newDays = checked
+                              ? [...formData.recurrence_days, day]
+                              : formData.recurrence_days.filter((d) => d !== day);
+                            setFormData({ ...formData, recurrence_days: newDays });
+                          }}
+                        />
+                        <Label htmlFor={`day-${day}`} className="cursor-pointer">{label}</Label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Selecione os dias da semana em que a missão deve aparecer
                   </p>
                 </div>
               </div>
@@ -725,7 +769,7 @@ const Missions = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="edit-mission-difficulty">{t("difficulty")}</Label>
                 <Select
@@ -736,21 +780,13 @@ const Missions = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="easy">{t("easy")}</SelectItem>
-                    <SelectItem value="normal">{t("normal")}</SelectItem>
-                    <SelectItem value="hard">{t("hard")}</SelectItem>
-                    <SelectItem value="extreme">{t("extreme")}</SelectItem>
+                    <SelectItem value="easy">{t("easy")} (10 XP)</SelectItem>
+                    <SelectItem value="normal">{t("normal")} (30 XP)</SelectItem>
+                    <SelectItem value="hard">{t("hard")} (50 XP)</SelectItem>
+                    <SelectItem value="extreme">{t("extreme")} (100 XP)</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label htmlFor="edit-mission-xp">XP</Label>
-                <Input
-                  id="edit-mission-xp"
-                  type="number"
-                  value={formData.xp}
-                  onChange={(e) => setFormData({ ...formData, xp: parseInt(e.target.value) || 0 })}
-                />
+                <p className="text-xs text-muted-foreground mt-1">XP é definido automaticamente pela dificuldade</p>
               </div>
             </div>
             <div>
@@ -841,29 +877,42 @@ const Missions = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>{t("difficulty")}</Label>
-                <p className="text-sm font-medium">{selectedMission?.difficulty}</p>
+                <Badge className={`${getDifficultyColor(selectedMission?.difficulty || "normal")}`}>
+                  {selectedMission?.difficulty.toUpperCase()}
+                </Badge>
               </div>
               <div>
-                <Label>XP</Label>
-                <p className="text-sm font-medium">+{selectedMission?.xp}</p>
+                <Label>XP Reward</Label>
+                <p className="text-sm font-bold text-primary">+{selectedMission?.xp} XP</p>
               </div>
             </div>
-            <div>
-              <Label>{t("status")}</Label>
-              <p className="text-sm font-medium">{selectedMission?.status}</p>
-            </div>
-            <div>
-              <Label>{t("dueDate")}</Label>
-              <p className="text-sm font-medium">
-                {selectedMission && format(new Date(selectedMission.due_date), "PPP")}
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>{t("status")}</Label>
+                {selectedMission && getStatusBadge(selectedMission.status)}
+              </div>
+              <div>
+                <Label>{t("dueDate")}</Label>
+                <p className="text-sm font-medium">
+                  {selectedMission && format(new Date(selectedMission.due_date), "PPP")}
+                </p>
+              </div>
             </div>
             {selectedMission?.goal_id && (
               <div>
-                <Label>{t("selectGoal")}</Label>
+                <Label>Meta Vinculada</Label>
                 <p className="text-sm font-medium">
-                  {goals.find(g => g.id === selectedMission.goal_id)?.title}
+                  {goals.find(g => g.id === selectedMission.goal_id)?.title || "Meta não encontrada"}
                 </p>
+              </div>
+            )}
+            {selectedMission?.is_recurring && (
+              <div>
+                <Label>Recorrência</Label>
+                <Badge variant="outline" className="text-xs">
+                  <Flame className="w-3 h-3 mr-1" />
+                  Missão Recorrente
+                </Badge>
               </div>
             )}
           </div>

@@ -1,6 +1,6 @@
 # LIFE PROGRESS - War Mode Tracker
 
-A gamified life progress tracking application built with React, TypeScript, Tailwind CSS, and Supabase.
+A gamified life progress tracking application built with React, TypeScript, Tailwind CSS, Node.js and PostgreSQL.
 
 ## 🚀 Features
 
@@ -13,21 +13,29 @@ A gamified life progress tracking application built with React, TypeScript, Tail
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Styling**: Tailwind CSS, shadcn/ui components
-- **Backend**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **State Management**: React Query (@tanstack/react-query)
-- **Routing**: React Router v6
-- **Icons**: Lucide React
+### Frontend
+- **React 18** - UI Library
+- **TypeScript** - Type Safety
+- **Vite** - Build Tool
+- **Tailwind CSS** - Styling
+- **shadcn/ui** - UI Components
+- **React Router v6** - Routing
+- **Lucide React** - Icons
+
+### Backend
+- **Node.js** - Runtime
+- **Express** - Web Framework
+- **PostgreSQL** - Database
+- **JWT** - Authentication
+- **bcryptjs** - Password Hashing
 
 ## 📋 Prerequisites
 
 Before you begin, ensure you have:
 
-- Node.js (v18 or higher) installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-- npm or yarn package manager
-- A Supabase account (free tier is sufficient) - [Create account](https://supabase.com)
+- **Node.js** (v18 or higher) - [Download](https://nodejs.org/)
+- **PostgreSQL** (v12 or higher) - [Download](https://www.postgresql.org/download/)
+- **npm** or **yarn** package manager
 
 ## 🔧 Installation & Setup
 
@@ -38,85 +46,109 @@ git clone <YOUR_GIT_URL>
 cd <YOUR_PROJECT_NAME>
 ```
 
-### 2. Install Dependencies
+### 2. Setup Backend
+
+#### Install Backend Dependencies
 
 ```bash
+cd backend
 npm install
-# or
-yarn install
 ```
 
-### 3. Set Up Supabase
+#### Configure PostgreSQL Database
 
-#### Create a Supabase Project
-
-1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
-2. Click "New Project"
-3. Fill in your project details
-4. Wait for the project to be created
-
-#### Run Database Setup Script
-
-1. In your Supabase project, go to the **SQL Editor**
-2. Open the file `supabase/setup.sql` from this repository
-3. Copy the entire contents of the file
-4. Paste it into the Supabase SQL Editor
-5. Click "Run" to execute the script
-
-This will create all necessary tables, functions, triggers, and Row Level Security policies.
-
-#### Configure Authentication
-
-1. In your Supabase Dashboard, go to **Authentication** → **Settings**
-2. Under "Email Auth", enable **"Confirm email"** to OFF for testing (you can enable it later for production)
-3. Save your changes
-
-### 4. Configure Environment Variables
-
-Create a `.env` file in the root directory:
+Criar o banco de dados:
 
 ```bash
-# Copy the example file
+# Conectar ao PostgreSQL (pode precisar de sudo)
+psql -U postgres
+
+# Criar banco de dados
+CREATE DATABASE life_progress;
+
+# Sair
+\q
+```
+
+#### Configure Backend Environment Variables
+
+```bash
+cd backend
 cp .env.example .env
 ```
 
-Edit the `.env` file and add your Supabase credentials:
+Editar `backend/.env`:
 
 ```env
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-public-key
-VITE_SUPABASE_PROJECT_ID=your-project-id
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=life_progress
+DB_USER=seu_usuario_postgres
+DB_PASSWORD=sua_senha_postgres
+JWT_SECRET=uma_chave_secreta_forte_e_aleatoria_aqui
+PORT=3000
+NODE_ENV=development
 ```
 
-**Where to find these values:**
+#### Run Database Migrations
 
-1. Go to your Supabase Dashboard
-2. Select your project
-3. Click on **Settings** (gear icon) → **API**
-4. Copy the values:
-   - `Project URL` → `VITE_SUPABASE_URL`
-   - `anon/public` key → `VITE_SUPABASE_PUBLISHABLE_KEY`
-   - Project ID (from the URL) → `VITE_SUPABASE_PROJECT_ID`
+```bash
+npm run migrate
+```
 
-### 5. Start the Development Server
+#### Start Backend Server
+
+```bash
+# Desenvolvimento (com hot reload)
+npm run dev
+
+# Ou produção
+npm start
+```
+
+Backend estará rodando em `http://localhost:3000`
+
+### 3. Setup Frontend
+
+#### Install Frontend Dependencies
+
+```bash
+cd ..  # Voltar para raiz do projeto
+npm install
+```
+
+#### Configure Frontend Environment Variables
+
+Criar `.env` na raiz do projeto:
+
+```bash
+cp .env.example .env
+```
+
+Editar `.env`:
+
+```env
+VITE_API_URL=http://localhost:3000/api
+```
+
+#### Start Frontend Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
 ```
 
-The application will be available at `http://localhost:8080`
+Frontend estará disponível em `http://localhost:8080`
 
 ## 🎮 Usage
 
 ### First Time Setup
 
-1. Open the application in your browser
-2. Click "Create Account" on the login page
-3. Enter your email and password
-4. You'll be automatically logged in (since email confirmation is disabled)
-5. Start creating your first mission!
+1. Certifique-se que o **backend está rodando** (`http://localhost:3000`)
+2. Abra o **frontend** no navegador (`http://localhost:8080`)
+3. Clique em "Create Account" na página de login
+4. Digite seu email e senha
+5. Você será automaticamente logado
+6. Comece criando sua primeira missão!
 
 ### Creating Missions
 
@@ -145,29 +177,41 @@ The application will be available at `http://localhost:8080`
 
 ## 🔐 Security Notes
 
-- All user data is protected by Row Level Security (RLS) policies
-- Users can only access their own data
-- Authentication is handled securely by Supabase Auth
-- Never commit your `.env` file to version control
+- Senhas são criptografadas com bcrypt
+- Autenticação via JWT (JSON Web Tokens)
+- Tokens têm validade de 7 dias
+- Cada usuário só acessa seus próprios dados
+- **NUNCA** commit o arquivo `.env` para controle de versão
 
 ## 📦 Project Structure
 
 ```
-├── src/
-│   ├── components/        # Reusable UI components
-│   │   ├── ui/           # shadcn/ui components
-│   │   ├── Layout.tsx    # Main layout wrapper
+├── backend/              # Backend API (Node.js/Express)
+│   ├── src/
+│   │   ├── config/       # Database configuration
+│   │   ├── controllers/  # Route controllers
+│   │   ├── database/     # Database schema & migrations
+│   │   ├── middlewares/  # Express middlewares
+│   │   ├── routes/       # API routes
+│   │   └── server.js     # Express server
+│   ├── .env              # Backend environment variables
+│   ├── .env.example
+│   ├── package.json
+│   └── README.md
+├── src/                  # Frontend (React)
+│   ├── components/       # UI components
+│   │   ├── ui/          # shadcn/ui components
+│   │   ├── Layout.tsx
 │   │   └── LanguageSwitcher.tsx
-│   ├── hooks/            # Custom React hooks
-│   │   └── useAuth.tsx   # Authentication hook
-│   ├── integrations/     # External service integrations
-│   │   └── supabase/     # Supabase client and types
-│   ├── lib/              # Utility functions
-│   │   ├── i18n.ts       # Internationalization
-│   │   └── utils.ts      # Helper functions
-│   ├── pages/            # Application pages
-│   │   ├── Index.tsx     # Landing page
-│   │   ├── Auth.tsx      # Login/Signup
+│   ├── hooks/           # Custom React hooks
+│   │   └── useAuth.tsx
+│   ├── lib/             # Utilities
+│   │   ├── api.ts       # API client
+│   │   ├── i18n.ts      # Internationalization
+│   │   └── utils.ts
+│   ├── pages/           # Application pages
+│   │   ├── Index.tsx
+│   │   ├── Auth.tsx
 │   │   ├── Dashboard.tsx
 │   │   ├── Missions.tsx
 │   │   ├── Goals.tsx
@@ -175,15 +219,12 @@ The application will be available at `http://localhost:8080`
 │   │   ├── Achievements.tsx
 │   │   ├── Profile.tsx
 │   │   └── Settings.tsx
-│   ├── App.tsx           # Main app component
-│   ├── main.tsx          # App entry point
-│   └── index.css         # Global styles
-├── supabase/
-│   ├── setup.sql         # Database setup script
-│   └── config.toml       # Supabase configuration
-├── .env                  # Environment variables (create this)
-├── .env.example          # Environment variables template
-└── README.md             # This file
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css
+├── .env                 # Frontend environment variables
+├── .env.example
+└── README.md
 ```
 
 ## 🎨 Customization
@@ -205,23 +246,34 @@ The app supports multiple languages. To add a new language:
 
 ## 🐛 Troubleshooting
 
-### "Invalid API key" error
+### Backend não inicia
 
-- Double-check your `.env` file
-- Ensure you're using the `anon/public` key, not the `service_role` key
-- Restart the development server after changing `.env`
+- Verifique se o PostgreSQL está rodando: `sudo service postgresql status` (Linux) ou `brew services list` (Mac)
+- Confirme as credenciais no `backend/.env`
+- Teste a conexão: `psql -U seu_usuario -d life_progress`
 
-### Database connection errors
+### Erro "relation does not exist"
 
-- Verify your Supabase project is active
-- Check that the database setup script ran successfully
-- Ensure RLS policies are enabled
+- Execute as migrations: `cd backend && npm run migrate`
 
-### Authentication issues
+### Erro de autenticação no frontend
 
-- Make sure "Confirm email" is disabled in Supabase for testing
-- Check that the `handle_new_user()` trigger is working (creates profile automatically)
-- Clear browser cache and try again
+- Verifique se o backend está rodando em `http://localhost:3000`
+- Confirme que `VITE_API_URL` no `.env` do frontend está correto
+- Limpe o localStorage do navegador e tente novamente
+
+### Porta já em uso
+
+**Backend:**
+- Mude a porta em `backend/.env`: `PORT=3001`
+
+**Frontend:**
+- Mude a porta em `vite.config.ts` ou use: `npm run dev -- --port 8081`
+
+### Erro de CORS
+
+- Verifique se o backend está configurado corretamente para aceitar requisições do frontend
+- O CORS já está habilitado no `backend/src/server.js`
 
 ## 📝 License
 

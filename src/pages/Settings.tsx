@@ -135,9 +135,9 @@ const Settings = () => {
     }
     
     try {
-      const missions = await api.getMissions();
-      const goals = await api.getGoals();
-      const achievements = await api.getAchievements();
+      const missions: any = await api.getMissions();
+      const goals: any = await api.getGoals();
+      const achievements: any = await api.getAchievements();
       
       await Promise.all([
         ...missions.map((m: any) => api.deleteMission(m.id)),

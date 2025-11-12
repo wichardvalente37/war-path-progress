@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { t } from "@/lib/i18n";
 
@@ -62,13 +62,7 @@ const Goals = () => {
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from("goal_categories")
-        .select("*")
-        .eq("user_id", user?.id)
-        .order("name", { ascending: true });
-
-      if (error) throw error;
+      const data: any = await api.getCategories();
       setCategories(data || []);
     } catch (error: any) {
       toast({
@@ -81,13 +75,7 @@ const Goals = () => {
 
   const fetchGoals = async () => {
     try {
-      const { data, error } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("user_id", user?.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const data: any = await api.getGoals();
       setGoals(data || []);
     } catch (error: any) {
       toast({
@@ -104,12 +92,7 @@ const Goals = () => {
     if (!newCategoryName.trim()) return;
     
     try {
-      const { error } = await supabase
-        .from("goal_categories")
-        .insert({ user_id: user?.id, name: newCategoryName.trim() });
-
-      if (error) throw error;
-
+      await api.createCategory({ name: newCategoryName });
       toast({ title: t("success"), description: "Categoria adicionada" });
       setNewCategoryName("");
       fetchCategories();
@@ -120,13 +103,7 @@ const Goals = () => {
 
   const handleDeleteCategory = async (categoryId: string) => {
     try {
-      const { error } = await supabase
-        .from("goal_categories")
-        .delete()
-        .eq("id", categoryId);
-
-      if (error) throw error;
-
+      await api.deleteCategory(categoryId);
       toast({ title: t("success"), description: "Categoria removida" });
       fetchCategories();
     } catch (error: any) {
@@ -136,8 +113,7 @@ const Goals = () => {
 
   const handleCreateGoal = async () => {
     try {
-      const { error } = await supabase.from("goals").insert({
-        user_id: user?.id,
+      await api.createGoal({
         title: formData.title,
         description: formData.description,
         target: formData.target,
@@ -145,8 +121,6 @@ const Goals = () => {
         category: formData.category,
         difficulty: formData.difficulty,
       });
-
-      if (error) throw error;
 
       toast({ title: t("success"), description: t("goalCreated") });
       setIsNewGoalOpen(false);
@@ -161,19 +135,14 @@ const Goals = () => {
     if (!selectedGoal) return;
 
     try {
-      const { error } = await supabase
-        .from("goals")
-        .update({
-          title: formData.title,
-          description: formData.description,
-          target: formData.target,
-          current: formData.current,
-          category: formData.category,
-          difficulty: formData.difficulty,
-        })
-        .eq("id", selectedGoal.id);
-
-      if (error) throw error;
+      await api.updateGoal(selectedGoal.id, {
+        title: formData.title,
+        description: formData.description,
+        target: formData.target,
+        current: formData.current,
+        category: formData.category,
+        difficulty: formData.difficulty,
+      });
 
       toast({ title: t("success"), description: t("goalUpdated") });
       setIsEditGoalOpen(false);
@@ -186,10 +155,7 @@ const Goals = () => {
 
   const handleDeleteGoal = async (id: string) => {
     try {
-      const { error } = await supabase.from("goals").delete().eq("id", id);
-
-      if (error) throw error;
-
+      await api.deleteGoal(id);
       toast({ title: t("success"), description: t("goalDeleted") });
       fetchGoals();
     } catch (error: any) {
@@ -201,16 +167,9 @@ const Goals = () => {
     try {
       const goal = goals.find(g => g.id === goalId);
       if (!goal) return;
-
+      
       const newCurrent = Math.max(0, Math.min(goal.target, goal.current + increment));
-
-      const { error } = await supabase
-        .from("goals")
-        .update({ current: newCurrent })
-        .eq("id", goalId);
-
-      if (error) throw error;
-
+      await api.updateGoal(goalId, { current: newCurrent });
       toast({ title: t("success"), description: "Progress updated" });
       fetchGoals();
     } catch (error: any) {

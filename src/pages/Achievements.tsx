@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Award, Flame, Target, Zap, Crown, Lock, Star, Swords, Medal } from "lucide-react";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/lib/i18n";
@@ -162,19 +162,15 @@ const Achievements = () => {
 
   const fetchData = async () => {
     try {
-      const [profileRes, missionsRes, goalsRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user?.id).single(),
-        supabase.from("missions").select("*").eq("user_id", user?.id),
-        supabase.from("goals").select("*").eq("user_id", user?.id),
+      const [profileData, missionsData, goalsData]: any = await Promise.all([
+        api.getProfile(),
+        api.getMissions(),
+        api.getGoals(),
       ]);
 
-      if (profileRes.error) throw profileRes.error;
-      if (missionsRes.error) throw missionsRes.error;
-      if (goalsRes.error) throw goalsRes.error;
-
-      setProfile(profileRes.data);
-      setMissions(missionsRes.data || []);
-      setGoals(goalsRes.data || []);
+      setProfile(profileData);
+      setMissions(missionsData || []);
+      setGoals(goalsData || []);
     } catch (error: any) {
       toast({
         title: t("error"),

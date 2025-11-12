@@ -3,7 +3,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Flame, Target, Zap, Award, TrendingUp, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/lib/i18n";
@@ -34,25 +34,14 @@ const Dashboard = () => {
   const fetchData = async () => {
     try {
       // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user?.id)
-        .single();
-
-      if (profileError) throw profileError;
+      const profileData = await api.getProfile();
       setProfile(profileData);
 
       // Fetch today's missions
+      const missionsData: any = await api.getMissions();
       const today = new Date().toISOString().split("T")[0];
-      const { data: missionsData, error: missionsError } = await supabase
-        .from("missions")
-        .select("*")
-        .eq("user_id", user?.id)
-        .eq("due_date", today);
-
-      if (missionsError) throw missionsError;
-      setTodayMissions(missionsData || []);
+      const todayMissionsFiltered = missionsData.filter((m: any) => m.due_date === today);
+      setTodayMissions(todayMissionsFiltered || []);
     } catch (error: any) {
       toast({
         title: t("error"),

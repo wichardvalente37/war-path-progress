@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { t } from "@/lib/i18n";
 
@@ -30,14 +30,7 @@ const Settings = () => {
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user?.id)
-        .single();
-
-      if (error) throw error;
-
+      const data: any = await api.getProfile();
       if (data) {
         setProfile(prev => ({
           ...prev,
@@ -55,16 +48,10 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          username: profile.username,
-          avatar_url: profile.avatar_url,
-        })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
+      await api.updateProfile({
+        username: profile.username,
+        avatar_url: profile.avatar_url,
+      });
       toast.success(t("profileUpdated") || "Profile updated successfully!");
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -167,8 +154,8 @@ const Settings = () => {
           <CardContent className="space-y-4">
             <div className="p-4 bg-muted/50 rounded-lg space-y-2 font-mono text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Project ID:</span>
-                <span className="text-foreground">{import.meta.env.VITE_SUPABASE_PROJECT_ID || "Not configured"}</span>
+                <span className="text-muted-foreground">API URL:</span>
+                <span className="text-foreground">{import.meta.env.VITE_API_URL || "http://localhost:3000/api"}</span>
               </div>
               <Separator />
               <div className="flex justify-between items-center">
@@ -183,8 +170,8 @@ const Settings = () => {
             <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
               <p className="text-sm text-foreground">
                 <strong>Note:</strong> To run this project locally with your own database, 
-                update the <code className="px-1 py-0.5 bg-muted rounded">.env</code> file with your Supabase credentials. 
-                See the <code className="px-1 py-0.5 bg-muted rounded">README.md</code> for instructions.
+                update the <code className="px-1 py-0.5 bg-muted rounded">.env</code> file in the backend folder with your PostgreSQL credentials. 
+                See the <code className="px-1 py-0.5 bg-muted rounded">backend/README.md</code> for instructions.
               </p>
             </div>
           </CardContent>
@@ -206,7 +193,7 @@ const Settings = () => {
             <Separator />
             <div className="flex justify-between">
               <span className="text-muted-foreground">Built with:</span>
-              <span className="text-foreground">React + TypeScript + Supabase</span>
+              <span className="text-foreground">React + TypeScript + Node.js + PostgreSQL</span>
             </div>
           </CardContent>
         </Card>

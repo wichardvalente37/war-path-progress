@@ -13,7 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/lib/i18n";
@@ -34,23 +34,11 @@ const Profile = () => {
   const fetchData = async () => {
     try {
       // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user?.id)
-        .single();
-
-      if (profileError) throw profileError;
+      const profileData = await api.getProfile();
+      setProfile(profileData);
 
       // Fetch missions
-      const { data: missionsData, error: missionsError } = await supabase
-        .from("missions")
-        .select("*")
-        .eq("user_id", user?.id);
-
-      if (missionsError) throw missionsError;
-
-      setProfile(profileData);
+      const missionsData: any = await api.getMissions();
       setMissions(missionsData || []);
     } catch (error: any) {
       toast({

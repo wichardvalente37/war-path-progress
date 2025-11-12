@@ -1,38 +1,41 @@
 import { useState, useEffect } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
+
+interface User {
+  id: string;
+  email: string;
+}
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    checkAuth();
   }, []);
 
+  const checkAuth = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        const userData = await api.getMe();
+        setUser(userData as User);
+      }
+    } catch (error) {
+      localStorage.removeItem('auth_token');
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await api.logout();
+    setUser(null);
     navigate("/auth");
   };
 
-  return { user, session, loading, signOut };
+  return { user, loading, signOut };
 };

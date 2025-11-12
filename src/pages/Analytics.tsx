@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, TrendingUp, Calendar, Filter, Target, Flame, Award, Zap } from "lucide-react";
 import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/lib/i18n";
@@ -30,12 +30,7 @@ const Analytics = () => {
 
   const fetchGoals = async () => {
     try {
-      const { data, error } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("user_id", user?.id);
-
-      if (error) throw error;
+      const data: any = await api.getGoals();
       setGoals(data || []);
     } catch (error: any) {
       toast({
@@ -48,12 +43,7 @@ const Analytics = () => {
 
   const fetchMissions = async () => {
     try {
-      const { data, error } = await supabase
-        .from("missions")
-        .select("*")
-        .eq("user_id", user?.id);
-
-      if (error) throw error;
+      const data: any = await api.getMissions();
       setMissions(data || []);
     } catch (error: any) {
       toast({

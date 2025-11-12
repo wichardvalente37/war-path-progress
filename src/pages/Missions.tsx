@@ -13,6 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { t } from "@/lib/i18n";
 import { format } from "date-fns";
@@ -72,14 +73,8 @@ const Missions = () => {
 
   const fetchGoals = async () => {
     try {
-      const { data, error } = await supabase
-        .from("goals")
-        .select("id, title, category")
-        .eq("user_id", user?.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setGoals(data || []);
+      const data: any = await api.getGoals();
+      setGoals(data.map((g: any) => ({ id: g.id, title: g.title, category: g.category })));
     } catch (error: any) {
       toast({
         title: t("error"),
@@ -91,13 +86,7 @@ const Missions = () => {
 
   const fetchMissions = async () => {
     try {
-      const { data, error } = await supabase
-        .from("missions")
-        .select("*")
-        .eq("user_id", user?.id)
-        .order("due_date", { ascending: true });
-
-      if (error) throw error;
+      const data: any = await api.getMissions();
       setMissions(data || []);
     } catch (error: any) {
       toast({
@@ -127,16 +116,14 @@ const Missions = () => {
       if (formData.is_recurring && formData.recurrence_count > 0 && formData.recurrence_days.length > 0) {
         // Create missions on specific weekdays
         const missionsToCreate = [];
-        let currentDate = new Date(formData.due_date);
         let createdCount = 0;
-        
-        // Loop until we've created the required number of missions
+        const currentDate = new Date(formData.due_date);
+
         while (createdCount < formData.recurrence_count) {
           const dayOfWeek = currentDate.getDay();
           
           if (formData.recurrence_days.includes(dayOfWeek)) {
             missionsToCreate.push({
-              user_id: user?.id,
               title: formData.title,
               description: formData.description,
               difficulty: formData.difficulty,
@@ -154,11 +141,12 @@ const Missions = () => {
           currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        const { error } = await supabase.from("missions").insert(missionsToCreate);
-        if (error) throw error;
+        // Create all missions
+        for (const mission of missionsToCreate) {
+          await api.createMission(mission);
+        }
       } else {
-        const { error } = await supabase.from("missions").insert({
-          user_id: user?.id,
+        await api.createMission({
           title: formData.title,
           description: formData.description,
           difficulty: formData.difficulty,
@@ -169,8 +157,6 @@ const Missions = () => {
           is_recurring: false,
           recurrence_pattern: null,
         });
-
-        if (error) throw error;
       }
 
       toast({ title: t("success"), description: t("missionCreated") });
@@ -188,20 +174,15 @@ const Missions = () => {
     try {
       const missionXP = getDifficultyXP(formData.difficulty);
       
-      const { error } = await supabase
-        .from("missions")
-        .update({
-          title: formData.title,
-          description: formData.description,
-          difficulty: formData.difficulty,
-          xp: missionXP,
-          status: formData.status,
-          due_date: format(formData.due_date, "yyyy-MM-dd"),
-          goal_id: formData.goal_id || null,
-        })
-        .eq("id", selectedMission.id);
-
-      if (error) throw error;
+      await api.updateMission(selectedMission.id, {
+        title: formData.title,
+        description: formData.description,
+        difficulty: formData.difficulty,
+        xp: missionXP,
+        status: formData.status,
+        due_date: format(formData.due_date, "yyyy-MM-dd"),
+        goal_id: formData.goal_id || null,
+      });
 
       toast({ title: t("success"), description: t("missionUpdated") });
       setIsEditMissionOpen(false);
@@ -214,10 +195,7 @@ const Missions = () => {
 
   const handleDeleteMission = async (id: string) => {
     try {
-      const { error } = await supabase.from("missions").delete().eq("id", id);
-
-      if (error) throw error;
-
+      await api.deleteMission(id);
       toast({ title: t("success"), description: t("missionDeleted") });
       fetchMissions();
     } catch (error: any) {
@@ -230,48 +208,7 @@ const Missions = () => {
       const mission = missions.find(m => m.id === id);
       if (!mission) return;
 
-      const { error } = await supabase
-        .from("missions")
-        .update({ status: newStatus })
-        .eq("id", id);
-
-      if (error) throw error;
-
-      // If mission completed, update XP and level
-      if (newStatus === "completed" && mission.status !== "completed") {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("xp, level")
-          .eq("id", user?.id)
-          .single();
-
-        if (profile) {
-          const newXP = (profile.xp || 0) + mission.xp;
-          const newLevel = Math.floor(newXP / 100) + 1;
-
-          await supabase
-            .from("profiles")
-            .update({ xp: newXP, level: newLevel })
-            .eq("id", user?.id);
-        }
-
-        // Update goal progress if mission linked to goal
-        if (mission.goal_id) {
-          const { data: goal } = await supabase
-            .from("goals")
-            .select("current, target")
-            .eq("id", mission.goal_id)
-            .single();
-
-          if (goal && goal.current < goal.target) {
-            await supabase
-              .from("goals")
-              .update({ current: goal.current + 1 })
-              .eq("id", mission.goal_id);
-          }
-        }
-      }
-
+      await api.updateMission(id, { status: newStatus });
       toast({ title: t("success"), description: t("missionUpdated") });
       fetchMissions();
     } catch (error: any) {

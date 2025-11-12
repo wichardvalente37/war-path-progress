@@ -1,32 +1,57 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings as SettingsIcon, User, Mail, Award, Shield } from "lucide-react";
+import { Settings as SettingsIcon, User, Mail, Award, Shield, Bell, Moon, Sun, Trash2, Download, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { t } from "@/lib/i18n";
+import { useTheme } from "next-themes";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     username: "",
     avatar_url: "",
     email: "",
   });
+  const [notifications, setNotifications] = useState({
+    missions: true,
+    achievements: true,
+    dailyReminder: true,
+  });
+  const [xpSettings, setXpSettings] = useState({
+    showXpPopups: true,
+    soundEffects: false,
+  });
 
   useEffect(() => {
     if (user) {
       fetchProfile();
       setProfile(prev => ({ ...prev, email: user.email || "" }));
+      loadSettings();
     }
   }, [user]);
+
+  const loadSettings = () => {
+    const savedNotifications = localStorage.getItem("notifications");
+    const savedXpSettings = localStorage.getItem("xpSettings");
+    
+    if (savedNotifications) {
+      setNotifications(JSON.parse(savedNotifications));
+    }
+    if (savedXpSettings) {
+      setXpSettings(JSON.parse(savedXpSettings));
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -58,6 +83,72 @@ const Settings = () => {
       toast.error(t("error") || "Error updating profile");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleNotificationChange = (key: keyof typeof notifications) => {
+    const updated = { ...notifications, [key]: !notifications[key] };
+    setNotifications(updated);
+    localStorage.setItem("notifications", JSON.stringify(updated));
+    toast.success("Notification settings updated");
+  };
+
+  const handleXpSettingChange = (key: keyof typeof xpSettings) => {
+    const updated = { ...xpSettings, [key]: !xpSettings[key] };
+    setXpSettings(updated);
+    localStorage.setItem("xpSettings", JSON.stringify(updated));
+    toast.success("XP settings updated");
+  };
+
+  const handleExportData = async () => {
+    try {
+      const [missions, goals, achievements] = await Promise.all([
+        api.getMissions(),
+        api.getGoals(),
+        api.getAchievements(),
+      ]);
+      
+      const exportData = {
+        profile,
+        missions,
+        goals,
+        achievements,
+        exportedAt: new Date().toISOString(),
+      };
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `life-progress-export-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      
+      toast.success("Data exported successfully!");
+    } catch (error) {
+      toast.error("Failed to export data");
+    }
+  };
+
+  const handleClearData = async () => {
+    if (!confirm("Are you sure you want to clear all your data? This action cannot be undone.")) {
+      return;
+    }
+    
+    try {
+      const missions: any = await api.getMissions();
+      const goals: any = await api.getGoals();
+      const achievements: any = await api.getAchievements();
+      
+      await Promise.all([
+        ...missions.map((m: any) => api.deleteMission(m.id)),
+        ...goals.map((g: any) => api.deleteGoal(g.id)),
+        ...achievements.map((a: any) => api.deleteAchievement(a.id)),
+      ]);
+      
+      toast.success("All data cleared successfully!");
+      window.location.reload();
+    } catch (error) {
+      toast.error("Failed to clear data");
     }
   };
 
@@ -174,6 +265,145 @@ const Settings = () => {
                 See the <code className="px-1 py-0.5 bg-muted rounded">backend/README.md</code> for instructions.
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Appearance Settings */}
+        <Card className="border-war/20 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              {theme === "dark" ? <Moon className="w-5 h-5 text-war" /> : <Sun className="w-5 h-5 text-war" />}
+              <CardTitle>Appearance</CardTitle>
+            </div>
+            <CardDescription>
+              Customize the look and feel of the app
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Dark Mode</Label>
+                <p className="text-sm text-muted-foreground">Switch between light and dark themes</p>
+              </div>
+              <Switch
+                checked={theme === "dark"}
+                onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notification Settings */}
+        <Card className="border-war/20 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-war" />
+              <CardTitle>Notifications</CardTitle>
+            </div>
+            <CardDescription>
+              Manage your notification preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Mission Notifications</Label>
+                <p className="text-sm text-muted-foreground">Get notified about mission updates</p>
+              </div>
+              <Switch
+                checked={notifications.missions}
+                onCheckedChange={() => handleNotificationChange("missions")}
+              />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Achievement Unlocked</Label>
+                <p className="text-sm text-muted-foreground">Get notified when you unlock achievements</p>
+              </div>
+              <Switch
+                checked={notifications.achievements}
+                onCheckedChange={() => handleNotificationChange("achievements")}
+              />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Daily Reminder</Label>
+                <p className="text-sm text-muted-foreground">Get daily reminders to complete missions</p>
+              </div>
+              <Switch
+                checked={notifications.dailyReminder}
+                onCheckedChange={() => handleNotificationChange("dailyReminder")}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gamification Settings */}
+        <Card className="border-war/20 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-war" />
+              <CardTitle>Gamification</CardTitle>
+            </div>
+            <CardDescription>
+              Customize your XP and progression experience
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>XP Popups</Label>
+                <p className="text-sm text-muted-foreground">Show XP gained popups when completing missions</p>
+              </div>
+              <Switch
+                checked={xpSettings.showXpPopups}
+                onCheckedChange={() => handleXpSettingChange("showXpPopups")}
+              />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Sound Effects</Label>
+                <p className="text-sm text-muted-foreground">Play sound effects for achievements and level ups</p>
+              </div>
+              <Switch
+                checked={xpSettings.soundEffects}
+                onCheckedChange={() => handleXpSettingChange("soundEffects")}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Data Management */}
+        <Card className="border-war/20 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-war" />
+              <CardTitle>Data Management</CardTitle>
+            </div>
+            <CardDescription>
+              Export or clear your data
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button 
+              onClick={handleExportData}
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export All Data
+            </Button>
+            <Button 
+              onClick={handleClearData}
+              variant="destructive"
+              className="w-full justify-start"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Clear All Data
+            </Button>
           </CardContent>
         </Card>
 

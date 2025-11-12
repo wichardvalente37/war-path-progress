@@ -40,12 +40,16 @@ const Dashboard = () => {
       // Fetch today's missions
       const missionsData: any = await api.getMissions();
       const today = new Date().toISOString().split("T")[0];
-      const todayMissionsFiltered = missionsData.filter((m: any) => m.due_date === today);
+      const todayMissionsFiltered = missionsData.filter((m: any) => {
+        const missionDate = m.due_date.split("T")[0];
+        return missionDate === today;
+      });
       setTodayMissions(todayMissionsFiltered || []);
     } catch (error: any) {
+      console.error("Error fetching dashboard data:", error);
       toast({
         title: t("error"),
-        description: error.message,
+        description: error.message || "Failed to load dashboard data",
         variant: "destructive",
       });
     } finally {

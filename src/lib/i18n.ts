@@ -7,6 +7,7 @@ export const translations = {
     analytics: "Analytics",
     achievements: "Achievements",
     profile: "Profile",
+    settings: "Settings",
     
     // Common
     create: "Create",
@@ -89,6 +90,23 @@ export const translations = {
     epic: "Epic",
     daily: "Daily",
     weekly: "Weekly",
+    
+    // Settings
+    profileSettings: "Profile Settings",
+    updateProfileInfo: "Update your profile information",
+    username: "Username",
+    enterUsername: "Enter your username",
+    avatarUrl: "Avatar URL",
+    saveChanges: "Save Changes",
+    saving: "Saving...",
+    profileUpdated: "Profile updated successfully",
+    accountInfo: "Account Information",
+    viewAccountDetails: "View your account details",
+    accountId: "Account ID",
+    databaseConfig: "Database Configuration",
+    databaseConfigDesc: "Your Supabase connection is configured via environment variables",
+    appInfo: "App Information",
+    manageProfile: "Manage your profile and preferences",
   },
   pt: {
     // Navigation
@@ -98,6 +116,7 @@ export const translations = {
     analytics: "Análises",
     achievements: "Conquistas",
     profile: "Perfil",
+    settings: "Configurações",
     
     // Common
     create: "Criar",
@@ -180,6 +199,23 @@ export const translations = {
     epic: "Épica",
     daily: "Diária",
     weekly: "Semanal",
+    
+    // Settings
+    profileSettings: "Configurações do Perfil",
+    updateProfileInfo: "Atualize as informações do seu perfil",
+    username: "Nome de Usuário",
+    enterUsername: "Digite seu nome de usuário",
+    avatarUrl: "URL do Avatar",
+    saveChanges: "Guardar Alterações",
+    saving: "A guardar...",
+    profileUpdated: "Perfil atualizado com sucesso",
+    accountInfo: "Informações da Conta",
+    viewAccountDetails: "Veja os detalhes da sua conta",
+    accountId: "ID da Conta",
+    databaseConfig: "Configuração do Banco de Dados",
+    databaseConfigDesc: "A conexão Supabase está configurada via variáveis de ambiente",
+    appInfo: "Informações do App",
+    manageProfile: "Gerencie seu perfil e preferências",
   }
 };
 

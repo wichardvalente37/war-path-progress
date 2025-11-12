@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Target, Trophy, User, Flame, Swords, BarChart3, LogOut } from "lucide-react";
+import { Home, Target, Trophy, User, Flame, Swords, BarChart3, LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
             <div className="flex items-center gap-2">
               <LanguageSwitcher />
+              <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
+                <Settings className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="sm" onClick={signOut}>
                 <LogOut className="h-4 w-4" />
               </Button>

@@ -33,17 +33,31 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
+      console.log("Fetching dashboard data...");
+      
       // Fetch profile
       const profileData = await api.getProfile();
+      console.log("Profile data:", profileData);
       setProfile(profileData);
 
       // Fetch today's missions
       const missionsData: any = await api.getMissions();
+      console.log("All missions:", missionsData);
+      
       const today = new Date().toISOString().split("T")[0];
+      console.log("Today's date:", today);
+      
       const todayMissionsFiltered = missionsData.filter((m: any) => {
+        if (!m.due_date) {
+          console.log("Mission without due_date:", m);
+          return false;
+        }
         const missionDate = m.due_date.split("T")[0];
+        console.log(`Comparing mission date ${missionDate} with today ${today}`, missionDate === today);
         return missionDate === today;
       });
+      
+      console.log("Today's missions filtered:", todayMissionsFiltered);
       setTodayMissions(todayMissionsFiltered || []);
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
